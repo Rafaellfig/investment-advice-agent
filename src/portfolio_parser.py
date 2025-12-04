@@ -1,9 +1,16 @@
 """Módulo para processar e extrair informações de arquivos de portfólio."""
 
 import re
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 from dataclasses import dataclass, field
+
+try:
+    import yfinance as yf
+    YFINANCE_AVAILABLE = True
+except ImportError:
+    YFINANCE_AVAILABLE = False
 
 
 @dataclass
@@ -17,6 +24,8 @@ class Acao:
     preco_medio: Optional[float] = None
     quantidade: Optional[int] = None
     data_investimento: Optional[str] = None
+    retorno_mensal: Optional[float] = None
+    preco_mes_anterior: Optional[float] = None
 
 
 @dataclass
@@ -248,7 +257,7 @@ def parse_portfolio(portfolio_text: str) -> PortfolioResumo:
                 
                 # Verifica se há um padrão de fundo: R$, %, % seguido de nome do fundo
                 # Isso lida com o caso onde os dados vêm antes do nome
-                if (i + 3 < len(linhas) and
+                if (i + 6 < len(linhas) and
                     linhas[i].startswith("R$") and
                     "%" in linhas[i+2] and
                     "%" in linhas[i+4] and
@@ -629,8 +638,12 @@ def formatar_resumo_portfolio(resumo: PortfolioResumo) -> str:
             output.append(f"  Posição: R$ {acao.posicao:,.2f}")
             output.append(f"  % Alocação: {acao.percentual_alocacao:.2f}%")
             output.append(f"  Rentabilidade: {acao.rentabilidade:.2f}%")
+            if acao.retorno_mensal is not None:
+                output.append(f"  Retorno Mensal: {acao.retorno_mensal:.2f}%")
             if acao.ultimo_preco:
                 output.append(f"  Último Preço: R$ {acao.ultimo_preco:.2f}")
+            if acao.preco_mes_anterior:
+                output.append(f"  Preço Mês Anterior: R$ {acao.preco_mes_anterior:.2f}")
             if acao.preco_medio:
                 output.append(f"  Preço Médio: R$ {acao.preco_medio:.2f}")
             if acao.quantidade:
@@ -722,3 +735,182 @@ def sumarizar_portfolio(arquivo_ou_texto: Union[str, Path]) -> PortfolioResumo:
         texto = str(arquivo_ou_texto)
     
     return parse_portfolio(texto)
+
+
+def calcular_retorno_mensal_acoes(
+    portfolio_resumo: PortfolioResumo,
+    usar_ultimo_preco_portfolio: bool = True
+) -> PortfolioResumo:
+    """
+    Calcula o retorno mensal de cada ação no portfólio usando yfinance.
+    
+    O retorno é calculado usando Adj Close (ajustado para dividendos) comparando:
+    - Preço atual: último preço disponível no yfinance (ou do portfólio se especificado)
+    - Preço mês anterior: preço de 1 mês atrás do último preço disponível
+    
+    Args:
+        portfolio_resumo: PortfolioResumo com as ações do cliente
+        usar_ultimo_preco_portfolio: Se True, usa o último preço do portfólio como referência.
+                                     Se False, usa o último preço disponível do yfinance.
+        
+    Returns:
+        PortfolioResumo com os campos retorno_mensal e preco_mes_anterior preenchidos
+        
+    Example:
+        >>> from src import sumarizar_portfolio, calcular_retorno_mensal_acoes
+        >>> resumo = sumarizar_portfolio("Input/XP - Albert_s portfolio.txt")
+        >>> resumo = calcular_retorno_mensal_acoes(resumo)
+        >>> for acao in resumo.acoes:
+        ...     print(f"{acao.codigo}: {acao.retorno_mensal:.2f}%")
+    """
+    if not YFINANCE_AVAILABLE:
+        raise ImportError(
+            "yfinance não está instalado. Instale com: pip install yfinance"
+        )
+    
+    for acao in portfolio_resumo.acoes:
+        try:
+            # Para ações brasileiras, adiciona sufixo .SA
+            codigo_yfinance = f"{acao.codigo}.SA"
+            
+            # Busca dados históricos (últimos 2 meses para garantir que temos dados)
+            ticker = yf.Ticker(codigo_yfinance)
+            hist = ticker.history(period="3mo")  # 3 meses para garantir dados suficientes
+            
+            if hist.empty:
+                print(f"Aviso: Não foi possível obter dados para {acao.codigo}")
+                continue
+            
+            # Pega o último preço disponível (Adj Close)
+            ultimo_preco_adj = hist['Adj Close'].iloc[-1]  # Último preço ajustado
+            
+            # Determina o preço atual a usar
+            if usar_ultimo_preco_portfolio and acao.ultimo_preco:
+                preco_atual = acao.ultimo_preco
+            else:
+                preco_atual = ultimo_preco_adj
+            
+            # Calcula a data de 1 mês atrás
+            data_atual = hist.index[-1]
+            data_mes_anterior = data_atual - timedelta(days=30)
+            
+            # Encontra o preço mais próximo de 1 mês atrás
+            # Procura na janela de 25 a 35 dias atrás para ter flexibilidade
+            data_inicio = data_atual - timedelta(days=35)
+            data_fim = data_atual - timedelta(days=25)
+            
+            # Filtra dados nessa janela
+            dados_mes_anterior = hist[(hist.index >= data_inicio) & (hist.index <= data_fim)]
+            
+            if dados_mes_anterior.empty:
+                # Se não encontrar dados na janela, tenta pegar o mais antigo disponível
+                # que seja pelo menos 20 dias atrás
+                dados_antigos = hist[hist.index <= (data_atual - timedelta(days=20))]
+                if not dados_antigos.empty:
+                    preco_mes_anterior_adj = dados_antigos['Adj Close'].iloc[-1]
+                else:
+                    print(f"Aviso: Não foi possível encontrar preço de 1 mês atrás para {acao.codigo}")
+                    continue
+            else:
+                # Pega o preço mais próximo da data desejada (último da janela)
+                preco_mes_anterior_adj = dados_mes_anterior['Adj Close'].iloc[-1]
+            
+            # Calcula o retorno mensal
+            # Retorno = (Preço Atual - Preço Mês Anterior) / Preço Mês Anterior * 100
+            retorno_mensal = ((preco_atual - preco_mes_anterior_adj) / preco_mes_anterior_adj) * 100
+            
+            # Atualiza os campos da ação
+            acao.retorno_mensal = retorno_mensal
+            acao.preco_mes_anterior = preco_mes_anterior_adj
+            
+            # Se não tinha último preço, atualiza com o do yfinance
+            if not acao.ultimo_preco:
+                acao.ultimo_preco = ultimo_preco_adj
+                
+        except Exception as e:
+            print(f"Erro ao calcular retorno mensal para {acao.codigo}: {str(e)}")
+            continue
+    
+    return portfolio_resumo
+
+
+def calcular_retorno_mensal_acoes_lista(
+    acoes: List[Acao],
+    usar_ultimo_preco_portfolio: bool = True
+) -> List[Acao]:
+    """
+    Calcula o retorno mensal de uma lista de ações usando yfinance.
+    
+    Args:
+        acoes: Lista de objetos Acao
+        usar_ultimo_preco_portfolio: Se True, usa o último preço do portfólio como referência.
+                                     Se False, usa o último preço disponível do yfinance.
+        
+    Returns:
+        Lista de ações com os campos retorno_mensal e preco_mes_anterior preenchidos
+    """
+    if not YFINANCE_AVAILABLE:
+        raise ImportError(
+            "yfinance não está instalado. Instale com: pip install yfinance"
+        )
+    
+    for acao in acoes:
+        try:
+            # Para ações brasileiras, adiciona sufixo .SA
+            codigo_yfinance = f"{acao.codigo}.SA"
+            
+            # Busca dados históricos (últimos 3 meses para garantir que temos dados)
+            ticker = yf.Ticker(codigo_yfinance)
+            hist = ticker.history(period="3mo")
+            
+            if hist.empty:
+                print(f"Aviso: Não foi possível obter dados para {acao.codigo}")
+                continue
+            
+            # Pega o último preço disponível (Adj Close)
+            ultimo_preco_adj = hist['Adj Close'].iloc[-1]
+            
+            # Determina o preço atual a usar
+            if usar_ultimo_preco_portfolio and acao.ultimo_preco:
+                preco_atual = acao.ultimo_preco
+            else:
+                preco_atual = ultimo_preco_adj
+            
+            # Calcula a data de 1 mês atrás
+            data_atual = hist.index[-1]
+            
+            # Encontra o preço mais próximo de 1 mês atrás
+            # Procura na janela de 25 a 35 dias atrás
+            data_inicio = data_atual - timedelta(days=35)
+            data_fim = data_atual - timedelta(days=25)
+            
+            # Filtra dados nessa janela
+            dados_mes_anterior = hist[(hist.index >= data_inicio) & (hist.index <= data_fim)]
+            
+            if dados_mes_anterior.empty:
+                # Se não encontrar dados na janela, tenta pegar o mais antigo disponível
+                dados_antigos = hist[hist.index <= (data_atual - timedelta(days=20))]
+                if not dados_antigos.empty:
+                    preco_mes_anterior_adj = dados_antigos['Adj Close'].iloc[-1]
+                else:
+                    print(f"Aviso: Não foi possível encontrar preço de 1 mês atrás para {acao.codigo}")
+                    continue
+            else:
+                preco_mes_anterior_adj = dados_mes_anterior['Adj Close'].iloc[-1]
+            
+            # Calcula o retorno mensal
+            retorno_mensal = ((preco_atual - preco_mes_anterior_adj) / preco_mes_anterior_adj) * 100
+            
+            # Atualiza os campos da ação
+            acao.retorno_mensal = retorno_mensal
+            acao.preco_mes_anterior = preco_mes_anterior_adj
+            
+            # Se não tinha último preço, atualiza com o do yfinance
+            if not acao.ultimo_preco:
+                acao.ultimo_preco = ultimo_preco_adj
+                
+        except Exception as e:
+            print(f"Erro ao calcular retorno mensal para {acao.codigo}: {str(e)}")
+            continue
+    
+    return acoes
