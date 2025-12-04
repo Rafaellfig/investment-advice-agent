@@ -8,6 +8,15 @@ from .ai_service import (
     summarize_macroeconomic_outlook,
     generate_investment_letter,
 )
+from .portfolio_parser import (
+    parse_portfolio,
+    formatar_resumo_portfolio,
+    sumarizar_portfolio,
+    PortfolioResumo,
+    Acao,
+    FundoInvestimento,
+    TituloRendaFixa,
+)
 
 __all__ = [
     "read_file",
@@ -17,5 +26,12 @@ __all__ = [
     "summarize_risk_profile",
     "summarize_macroeconomic_outlook",
     "generate_investment_letter",
+    "parse_portfolio",
+    "formatar_resumo_portfolio",
+    "sumarizar_portfolio",
+    "PortfolioResumo",
+    "Acao",
+    "FundoInvestimento",
+    "TituloRendaFixa",
 ]
 
