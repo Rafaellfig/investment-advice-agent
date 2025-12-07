@@ -1,4 +1,4 @@
-"""Serviços de integração com a API da OpenAI."""
+"""Services for integration with OpenAI API."""
 
 import os
 from openai import OpenAI
@@ -12,25 +12,25 @@ from prompts.prompts import (
     get_investment_letter_prompt,
 )
 
-# Carrega variáveis de ambiente
+# Load environment variables
 load_dotenv()
 
-# Inicializa o cliente OpenAI
+# Initialize OpenAI client
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 def call_openai(prompt: str) -> str:
     """
-    Faz uma chamada à API da OpenAI e retorna a resposta.
+    Makes a call to the OpenAI API and returns the response.
     
     Args:
-        prompt: Texto do prompt a ser enviado
+        prompt: Prompt text to be sent
         
     Returns:
-        Resposta da API como string
+        API response as string
         
     Raises:
-        Exception: Se ocorrer erro na chamada à API
+        Exception: If an error occurs in the API call
     """
     try:
         response = client.chat.completions.create(
@@ -43,18 +43,18 @@ def call_openai(prompt: str) -> str:
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        raise Exception(f"Erro ao chamar API da OpenAI: {str(e)}")
+        raise Exception(f"Error calling OpenAI API: {str(e)}")
 
 
 def summarize_portfolio_results(portfolio_data: str) -> str:
     """
-    Gera resumo dos resultados do portfólio.
+    Generates summary of portfolio results.
     
     Args:
-        portfolio_data: Dados do portfólio do cliente
+        portfolio_data: Client's portfolio data
         
     Returns:
-        Resumo dos resultados do portfólio
+        Summary of portfolio results
     """
     prompt = get_portfolio_prompt(portfolio_data)
     return call_openai(prompt)
@@ -62,13 +62,13 @@ def summarize_portfolio_results(portfolio_data: str) -> str:
 
 def summarize_risk_profile(risk_profile_data: str) -> str:
     """
-    Gera resumo do perfil de risco do cliente.
+    Generates summary of client's risk profile.
     
     Args:
-        risk_profile_data: Dados do perfil de risco
+        risk_profile_data: Risk profile data
         
     Returns:
-        Resumo do perfil de risco
+        Summary of risk profile
     """
     prompt = get_risk_profile_prompt(risk_profile_data)
     return call_openai(prompt)
@@ -76,13 +76,13 @@ def summarize_risk_profile(risk_profile_data: str) -> str:
 
 def summarize_macroeconomic_outlook(macro_data: str) -> str:
     """
-    Gera resumo da perspectiva macroeconômica.
+    Generates summary of macroeconomic outlook.
     
     Args:
-        macro_data: Dados da análise macroeconômica
+        macro_data: Macroeconomic analysis data
         
     Returns:
-        Resumo da perspectiva macroeconômica
+        Summary of macroeconomic outlook
     """
     prompt = get_macro_outlook_prompt(macro_data)
     return call_openai(prompt)
@@ -94,15 +94,15 @@ def generate_investment_letter(
     portfolio_results_summary: str
 ) -> str:
     """
-    Gera a carta de investimento mensal em português.
+    Generates the monthly investment letter in Portuguese.
     
     Args:
-        risk_profile_summary: Resumo do perfil de risco
-        macro_outlook_summary: Resumo da perspectiva macroeconômica
-        portfolio_results_summary: Resumo dos resultados do portfólio
+        risk_profile_summary: Risk profile summary
+        macro_outlook_summary: Macroeconomic outlook summary
+        portfolio_results_summary: Portfolio results summary
         
     Returns:
-        Carta de investimento completa em português
+        Complete investment letter in Portuguese
     """
     prompt = get_investment_letter_prompt(
         risk_profile_summary,
@@ -110,4 +110,3 @@ def generate_investment_letter(
         portfolio_results_summary
     )
     return call_openai(prompt)
-

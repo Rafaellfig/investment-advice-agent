@@ -1,4 +1,4 @@
-"""Templates de prompts para a API da OpenAI."""
+"""Prompt templates for OpenAI API."""
 
 from .prompts import (
     get_portfolio_prompt,
@@ -13,4 +13,3 @@ __all__ = [
     "get_macro_outlook_prompt",
     "get_investment_letter_prompt",
 ]
-

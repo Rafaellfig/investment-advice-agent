@@ -1,4 +1,4 @@
-"""Módulo para processar e extrair informações de arquivos de portfólio."""
+"""Module for processing and extracting information from portfolio files."""
 
 import re
 from datetime import datetime, timedelta
@@ -14,409 +14,409 @@ except ImportError:
 
 
 @dataclass
-class Acao:
-    """Representa uma ação no portfólio."""
-    codigo: str
-    posicao: float
-    percentual_alocacao: float
-    rentabilidade: float
-    ultimo_preco: Optional[float] = None
-    preco_medio: Optional[float] = None
-    quantidade: Optional[int] = None
-    data_investimento: Optional[str] = None
-    retorno_mensal: Optional[float] = None
-    preco_mes_anterior: Optional[float] = None
+class Stock:
+    """Represents a stock in the portfolio."""
+    code: str
+    position: float
+    allocation_percentage: float
+    return_rate: float
+    last_price: Optional[float] = None
+    average_price: Optional[float] = None
+    quantity: Optional[int] = None
+    investment_date: Optional[str] = None
+    monthly_return: Optional[float] = None
+    previous_month_price: Optional[float] = None
 
 
 @dataclass
-class FundoInvestimento:
-    """Representa um fundo de investimento no portfólio."""
-    nome: str
-    posicao: float
-    percentual_alocacao: float
-    rentabilidade: float
-    valor_aplicado: Optional[float] = None
-    valor_liquido: Optional[float] = None
-    data_investimento: Optional[str] = None
-    data_cota: Optional[str] = None
+class InvestmentFund:
+    """Represents an investment fund in the portfolio."""
+    name: str
+    position: float
+    allocation_percentage: float
+    return_rate: float
+    invested_amount: Optional[float] = None
+    net_value: Optional[float] = None
+    investment_date: Optional[str] = None
+    quota_date: Optional[str] = None
 
 
 @dataclass
-class TituloRendaFixa:
-    """Representa um título de renda fixa no portfólio."""
-    nome: str
-    posicao_mercado: float
-    percentual_alocacao: float
-    valor_aplicado: float
-    taxa_mercado: Optional[str] = None
-    data_aplicacao: Optional[str] = None
-    data_vencimento: Optional[str] = None
-    data_investimento: Optional[str] = None
+class FixedIncomeSecurity:
+    """Represents a fixed income security in the portfolio."""
+    name: str
+    market_position: float
+    allocation_percentage: float
+    invested_amount: float
+    market_rate: Optional[str] = None
+    application_date: Optional[str] = None
+    maturity_date: Optional[str] = None
+    investment_date: Optional[str] = None
 
 
 @dataclass
-class PortfolioResumo:
-    """Resumo estruturado do portfólio do cliente."""
-    nome_cliente: str
-    patrimonio_total: float
-    total_investido: float
-    saldo_disponivel: float
-    acoes: List[Acao] = field(default_factory=list)
-    fundos: List[FundoInvestimento] = field(default_factory=list)
-    titulos_renda_fixa: List[TituloRendaFixa] = field(default_factory=list)
-    percentual_acoes: float = 0.0
-    percentual_fundos: float = 0.0
-    percentual_renda_fixa: float = 0.0
+class PortfolioSummary:
+    """Structured summary of the client's portfolio."""
+    client_name: str
+    total_assets: float
+    total_invested: float
+    available_balance: float
+    stocks: List[Stock] = field(default_factory=list)
+    funds: List[InvestmentFund] = field(default_factory=list)
+    fixed_income_securities: List[FixedIncomeSecurity] = field(default_factory=list)
+    stocks_percentage: float = 0.0
+    funds_percentage: float = 0.0
+    fixed_income_percentage: float = 0.0
 
 
-def extrair_valor_monetario(texto: str) -> Optional[float]:
-    """Extrai valor monetário de uma string (formato R$ X.XXX,XX ou R$ X,XXX.XX)."""
-    if not texto:
+def extract_monetary_value(text: str) -> Optional[float]:
+    """Extracts monetary value from a string (format R$ X.XXX,XX or R$ X,XXX.XX)."""
+    if not text:
         return None
-    # Remove R$ e espaços
-    texto_limpo = texto.replace("R$", "").strip()
-    # Remove todos os espaços
-    texto_limpo = texto_limpo.replace(" ", "")
+    # Remove R$ and spaces
+    clean_text = text.replace("R$", "").strip()
+    # Remove all spaces
+    clean_text = clean_text.replace(" ", "")
     
-    # Detecta formato: se tem ponto antes de vírgula, é formato brasileiro (R$ 1.234,56)
-    # Se tem vírgula antes de ponto, pode ser formato americano (R$ 1,234.56)
-    if "." in texto_limpo and "," in texto_limpo:
-        # Verifica qual vem primeiro
-        idx_ponto = texto_limpo.find(".")
-        idx_virgula = texto_limpo.find(",")
-        if idx_ponto < idx_virgula:
-            # Formato brasileiro: 1.234,56
-            texto_limpo = texto_limpo.replace(".", "").replace(",", ".")
+    # Detect format: if dot comes before comma, it's Brazilian format (R$ 1.234,56)
+    # If comma comes before dot, it might be American format (R$ 1,234.56)
+    if "." in clean_text and "," in clean_text:
+        # Check which comes first
+        dot_idx = clean_text.find(".")
+        comma_idx = clean_text.find(",")
+        if dot_idx < comma_idx:
+            # Brazilian format: 1.234,56
+            clean_text = clean_text.replace(".", "").replace(",", ".")
         else:
-            # Formato americano: 1,234.56
-            texto_limpo = texto_limpo.replace(",", "")
-    elif "," in texto_limpo:
-        # Apenas vírgula, pode ser decimal brasileiro
-        texto_limpo = texto_limpo.replace(",", ".")
-    # Se só tem ponto, pode ser decimal ou milhar - assumimos decimal se não tiver 3 dígitos após
+            # American format: 1,234.56
+            clean_text = clean_text.replace(",", "")
+    elif "," in clean_text:
+        # Only comma, might be Brazilian decimal
+        clean_text = clean_text.replace(",", ".")
+    # If only dot, might be decimal or thousand - assume decimal if not 3 digits after
     
     try:
-        return float(texto_limpo)
+        return float(clean_text)
     except (ValueError, AttributeError):
         return None
 
 
-def extrair_percentual(texto: str) -> Optional[float]:
-    """Extrai percentual de uma string (formato X,XX% ou X.XX%)."""
-    if not texto:
+def extract_percentage(text: str) -> Optional[float]:
+    """Extracts percentage from a string (format X,XX% or X.XX%)."""
+    if not text:
         return None
-    texto_limpo = texto.replace("%", "").strip()
-    # Substitui vírgula por ponto
-    texto_limpo = texto_limpo.replace(",", ".")
+    clean_text = text.replace("%", "").strip()
+    # Replace comma with dot
+    clean_text = clean_text.replace(",", ".")
     try:
-        return float(texto_limpo)
+        return float(clean_text)
     except (ValueError, AttributeError):
         return None
 
 
-def extrair_rentabilidade(texto: str) -> Optional[float]:
-    """Extrai rentabilidade de uma string (pode ter sinal negativo)."""
-    if not texto:
+def extract_return_rate(text: str) -> Optional[float]:
+    """Extracts return rate from a string (may have negative sign)."""
+    if not text:
         return None
-    texto_limpo = texto.replace("%", "").strip()
-    # Substitui vírgula por ponto
-    texto_limpo = texto_limpo.replace(",", ".")
+    clean_text = text.replace("%", "").strip()
+    # Replace comma with dot
+    clean_text = clean_text.replace(",", ".")
     try:
-        return float(texto_limpo)
+        return float(clean_text)
     except (ValueError, AttributeError):
         return None
 
 
-def parse_portfolio(portfolio_text: str) -> PortfolioResumo:
+def parse_portfolio(portfolio_text: str) -> PortfolioSummary:
     """
-    Processa o texto do portfólio e extrai todas as informações estruturadas.
+    Processes the portfolio text and extracts all structured information.
     
     Args:
-        portfolio_text: Texto completo do arquivo de portfólio
+        portfolio_text: Complete text from the portfolio file
         
     Returns:
-        PortfolioResumo com todas as informações extraídas
+        PortfolioSummary with all extracted information
     """
-    linhas = [linha.strip() for linha in portfolio_text.split('\n')]
+    lines = [line.strip() for line in portfolio_text.split('\n')]
     
-    # Inicializa o resumo
-    resumo = PortfolioResumo(
-        nome_cliente="",
-        patrimonio_total=0.0,
-        total_investido=0.0,
-        saldo_disponivel=0.0
+    # Initialize summary
+    summary = PortfolioSummary(
+        client_name="",
+        total_assets=0.0,
+        total_invested=0.0,
+        available_balance=0.0
     )
     
     i = 0
-    while i < len(linhas):
-        linha = linhas[i]
+    while i < len(lines):
+        line = lines[i]
         
-        # Extrai nome do cliente (primeira linha)
-        if not resumo.nome_cliente and linha and "este é o seu patrimônio" in linha.lower():
-            # Extrai nome antes da vírgula
-            partes = linha.split(",")
-            if partes:
-                resumo.nome_cliente = partes[0].strip()
+        # Extract client name (first line)
+        if not summary.client_name and line and "este é o seu patrimônio" in line.lower():
+            # Extract name before comma
+            parts = line.split(",")
+            if parts:
+                summary.client_name = parts[0].strip()
         
-        # Total investido
-        if linha.lower() == "total investido":
-            # Procura o valor nas próximas linhas (pula linhas vazias)
+        # Total invested
+        if line.lower() == "total investido":
+            # Look for value in next lines (skip empty lines)
             j = i + 1
-            while j < len(linhas) and not linhas[j].startswith("R$"):
+            while j < len(lines) and not lines[j].startswith("R$"):
                 j += 1
-            if j < len(linhas):
-                valor = extrair_valor_monetario(linhas[j])
-                if valor:
-                    resumo.total_investido = valor
+            if j < len(lines):
+                value = extract_monetary_value(lines[j])
+                if value:
+                    summary.total_invested = value
         
-        # Saldo disponível
-        if linha.lower() == "saldo disponível":
-            # Procura o valor nas próximas linhas (pula linhas vazias)
-            # Pode haver um valor intermediário, então procura o último R$ antes de "Ações"
+        # Available balance
+        if line.lower() == "saldo disponível":
+            # Look for value in next lines (skip empty lines)
+            # There might be an intermediate value, so look for the last R$ before "Ações"
             j = i + 1
-            ultimo_valor = None
-            while j < len(linhas) and linhas[j] != "Ações":
-                if linhas[j].startswith("R$"):
-                    ultimo_valor = extrair_valor_monetario(linhas[j])
+            last_value = None
+            while j < len(lines) and lines[j] != "Ações":
+                if lines[j].startswith("R$"):
+                    last_value = extract_monetary_value(lines[j])
                 j += 1
-            if ultimo_valor:
-                resumo.saldo_disponivel = ultimo_valor
+            if last_value:
+                summary.available_balance = last_value
         
-        # Patrimônio total = Total investido + Saldo disponível
-        resumo.patrimonio_total = resumo.total_investido + resumo.saldo_disponivel
+        # Total assets = Total invested + Available balance
+        summary.total_assets = summary.total_invested + summary.available_balance
         
-        # Seção de Ações
-        if linha == "Ações" and i + 1 < len(linhas):
-            # Próxima linha tem o percentual total de ações
-            percentual_acoes = extrair_percentual(linhas[i+1])
-            if percentual_acoes:
-                resumo.percentual_acoes = percentual_acoes
+        # Stocks section
+        if line == "Ações" and i + 1 < len(lines):
+            # Next line has total stocks percentage
+            stocks_percentage = extract_percentage(lines[i+1])
+            if stocks_percentage:
+                summary.stocks_percentage = stocks_percentage
             
-            # Pula cabeçalhos e processa ações
+            # Skip headers and process stocks
             i += 2
-            # Pula linhas de cabeçalho até encontrar primeira ação
-            while i < len(linhas) and not re.match(r'^[A-Z]{4}\d$', linhas[i]):
+            # Skip header lines until finding first stock
+            while i < len(lines) and not re.match(r'^[A-Z]{4}\d$', lines[i]):
                 i += 1
             
-            # Processa ações até encontrar "Fundos de Investimentos"
-            while i < len(linhas) and linhas[i] != "Fundos de Investimentos":
-                linha_atual = linhas[i]
+            # Process stocks until finding "Fundos de Investimentos"
+            while i < len(lines) and lines[i] != "Fundos de Investimentos":
+                current_line = lines[i]
                 
-                # Verifica se é um código de ação (formato XXX3, XXX4, etc.)
-                if re.match(r'^[A-Z]{4}\d$', linha_atual):
-                    acao = Acao(codigo=linha_atual, posicao=0.0, percentual_alocacao=0.0, rentabilidade=0.0)
+                # Check if it's a stock code (format XXX3, XXX4, etc.)
+                if re.match(r'^[A-Z]{4}\d$', current_line):
+                    stock = Stock(code=current_line, position=0.0, allocation_percentage=0.0, return_rate=0.0)
                     
-                    # Próximas linhas têm posição, % alocação e rentabilidade
-                    # Pula linhas vazias
+                    # Next lines have position, % allocation and return rate
+                    # Skip empty lines
                     j = i + 1
-                    while j < len(linhas) and not linhas[j]:
+                    while j < len(lines) and not lines[j]:
                         j += 1
-                    if j < len(linhas) and linhas[j].startswith("R$"):
-                        posicao = extrair_valor_monetario(linhas[j])
-                        if posicao:
-                            acao.posicao = posicao
+                    if j < len(lines) and lines[j].startswith("R$"):
+                        position = extract_monetary_value(lines[j])
+                        if position:
+                            stock.position = position
                     
                     j += 1
-                    while j < len(linhas) and not linhas[j]:
+                    while j < len(lines) and not lines[j]:
                         j += 1
-                    if j < len(linhas) and "%" in linhas[j]:
-                        percentual = extrair_percentual(linhas[j])
-                        if percentual:
-                            acao.percentual_alocacao = percentual
+                    if j < len(lines) and "%" in lines[j]:
+                        percentage = extract_percentage(lines[j])
+                        if percentage:
+                            stock.allocation_percentage = percentage
                     
                     j += 1
-                    while j < len(linhas) and not linhas[j]:
+                    while j < len(lines) and not lines[j]:
                         j += 1
-                    if j < len(linhas) and ("%" in linhas[j] or "-" in linhas[j] or linhas[j][0].isdigit()):
-                        rentabilidade = extrair_rentabilidade(linhas[j])
-                        if rentabilidade is not None:
-                            acao.rentabilidade = rentabilidade
+                    if j < len(lines) and ("%" in lines[j] or "-" in lines[j] or lines[j][0].isdigit()):
+                        return_rate = extract_return_rate(lines[j])
+                        if return_rate is not None:
+                            stock.return_rate = return_rate
                     
-                    resumo.acoes.append(acao)
+                    summary.stocks.append(stock)
                     i = j + 1
                 else:
                     i += 1
             continue
         
-        # Seção de Fundos de Investimentos
-        if linha == "Fundos de Investimentos" and i + 1 < len(linhas):
-            # Próxima linha tem o percentual total de fundos
-            percentual_fundos = extrair_percentual(linhas[i+1])
-            if percentual_fundos:
-                resumo.percentual_fundos = percentual_fundos
+        # Investment Funds section
+        if line == "Fundos de Investimentos" and i + 1 < len(lines):
+            # Next line has total funds percentage
+            funds_percentage = extract_percentage(lines[i+1])
+            if funds_percentage:
+                summary.funds_percentage = funds_percentage
             
             i += 2
-            # Pula cabeçalhos
-            while i < len(linhas) and (linhas[i] in ["Posição", "% Alocação", "Rentabilidade", ""] or 
-                                      linhas[i].startswith("Posição") or linhas[i].startswith("%")):
+            # Skip headers
+            while i < len(lines) and (lines[i] in ["Posição", "% Alocação", "Rentabilidade", ""] or 
+                                      lines[i].startswith("Posição") or lines[i].startswith("%")):
                 i += 1
             
-            # Processa fundos até encontrar "Renda Fixa"
-            while i < len(linhas) and "Renda Fixa" not in linhas[i]:
-                linha_atual = linhas[i]
+            # Process funds until finding "Renda Fixa"
+            while i < len(lines) and "Renda Fixa" not in lines[i]:
+                current_line = lines[i]
                 
-                # Verifica se há um padrão de fundo: R$, %, % seguido de nome do fundo
-                # Isso lida com o caso onde os dados vêm antes do nome
-                if (i + 6 < len(linhas) and
-                    linhas[i].startswith("R$") and
-                    "%" in linhas[i+2] and
-                    "%" in linhas[i+4] and
-                    linhas[i+6] and
-                    len(linhas[i+6]) > 10 and
-                    ("FIC" in linhas[i+6] or "FIM" in linhas[i+6] or "FIA" in linhas[i+6] or 
-                     "Advisory" in linhas[i+6] or "Hedge" in linhas[i+6])):
+                # Check if there's a fund pattern: R$, %, % followed by fund name
+                # This handles the case where data comes before the name
+                if (i + 6 < len(lines) and
+                    lines[i].startswith("R$") and
+                    "%" in lines[i+2] and
+                    "%" in lines[i+4] and
+                    lines[i+6] and
+                    len(lines[i+6]) > 10 and
+                    ("FIC" in lines[i+6] or "FIM" in lines[i+6] or "FIA" in lines[i+6] or 
+                     "Advisory" in lines[i+6] or "Hedge" in lines[i+6])):
                     
-                    # Dados vêm antes do nome
-                    fundo = FundoInvestimento(
-                        nome=linhas[i+6],
-                        posicao=0.0,
-                        percentual_alocacao=0.0,
-                        rentabilidade=0.0
+                    # Data comes before name
+                    fund = InvestmentFund(
+                        name=lines[i+6],
+                        position=0.0,
+                        allocation_percentage=0.0,
+                        return_rate=0.0
                     )
                     
-                    posicao = extrair_valor_monetario(linhas[i])
-                    if posicao:
-                        fundo.posicao = posicao
+                    position = extract_monetary_value(lines[i])
+                    if position:
+                        fund.position = position
                     
-                    percentual = extrair_percentual(linhas[i+2])
-                    if percentual:
-                        fundo.percentual_alocacao = percentual
+                    percentage = extract_percentage(lines[i+2])
+                    if percentage:
+                        fund.allocation_percentage = percentage
                     
-                    rentabilidade = extrair_rentabilidade(linhas[i+4])
-                    if rentabilidade is not None:
-                        fundo.rentabilidade = rentabilidade
+                    return_rate = extract_return_rate(lines[i+4])
+                    if return_rate is not None:
+                        fund.return_rate = return_rate
                     
-                    resumo.fundos.append(fundo)
+                    summary.funds.append(fund)
                     i = i + 7
                     continue
                 
-                # Nome do fundo geralmente é uma linha longa sem ser código de ação
-                if (linha_atual and 
-                    not re.match(r'^[A-Z]{4}\d$', linha_atual) and
-                    not linha_atual.startswith("R$") and
-                    "%" not in linha_atual and
-                    "Posição" not in linha_atual and
-                    "Alocação" not in linha_atual and
-                    "Rentabilidade" not in linha_atual and
-                    "Data" not in linha_atual and
-                    "Valor" not in linha_atual and
-                    len(linha_atual) > 10 and
-                    ("FIC" in linha_atual or "FIM" in linha_atual or "FIA" in linha_atual or "Advisory" in linha_atual or "Hedge" in linha_atual)):
+                # Fund name is usually a long line that's not a stock code
+                if (current_line and 
+                    not re.match(r'^[A-Z]{4}\d$', current_line) and
+                    not current_line.startswith("R$") and
+                    "%" not in current_line and
+                    "Posição" not in current_line and
+                    "Alocação" not in current_line and
+                    "Rentabilidade" not in current_line and
+                    "Data" not in current_line and
+                    "Valor" not in current_line and
+                    len(current_line) > 10 and
+                    ("FIC" in current_line or "FIM" in current_line or "FIA" in current_line or "Advisory" in current_line or "Hedge" in current_line)):
                     
-                    fundo = FundoInvestimento(
-                        nome=linha_atual,
-                        posicao=0.0,
-                        percentual_alocacao=0.0,
-                        rentabilidade=0.0
+                    fund = InvestmentFund(
+                        name=current_line,
+                        position=0.0,
+                        allocation_percentage=0.0,
+                        return_rate=0.0
                     )
                     
-                    # Próximas linhas têm posição, % alocação e rentabilidade
+                    # Next lines have position, % allocation and return rate
                     j = i + 1
-                    while j < len(linhas) and not linhas[j]:
+                    while j < len(lines) and not lines[j]:
                         j += 1
-                    if j < len(linhas) and linhas[j].startswith("R$"):
-                        posicao = extrair_valor_monetario(linhas[j])
-                        if posicao:
-                            fundo.posicao = posicao
+                    if j < len(lines) and lines[j].startswith("R$"):
+                        position = extract_monetary_value(lines[j])
+                        if position:
+                            fund.position = position
                     
                     j += 1
-                    while j < len(linhas) and not linhas[j]:
+                    while j < len(lines) and not lines[j]:
                         j += 1
-                    if j < len(linhas) and "%" in linhas[j]:
-                        percentual = extrair_percentual(linhas[j])
-                        if percentual:
-                            fundo.percentual_alocacao = percentual
+                    if j < len(lines) and "%" in lines[j]:
+                        percentage = extract_percentage(lines[j])
+                        if percentage:
+                            fund.allocation_percentage = percentage
                     
                     j += 1
-                    while j < len(linhas) and not linhas[j]:
+                    while j < len(lines) and not lines[j]:
                         j += 1
-                    if j < len(linhas) and ("%" in linhas[j] or "-" in linhas[j] or (linhas[j] and linhas[j][0].isdigit())):
-                        rentabilidade = extrair_rentabilidade(linhas[j])
-                        if rentabilidade is not None:
-                            fundo.rentabilidade = rentabilidade
+                    if j < len(lines) and ("%" in lines[j] or "-" in lines[j] or (lines[j] and lines[j][0].isdigit())):
+                        return_rate = extract_return_rate(lines[j])
+                        if return_rate is not None:
+                            fund.return_rate = return_rate
                     
-                    resumo.fundos.append(fundo)
+                    summary.funds.append(fund)
                     i = j + 1
                 else:
                     i += 1
             continue
         
-        # Seção de Renda Fixa
-        if linha == "Renda Fixa" and i + 1 < len(linhas):
-            # Próxima linha tem o percentual total de renda fixa
-            percentual_rf = extrair_percentual(linhas[i+1])
-            if percentual_rf:
-                resumo.percentual_renda_fixa = percentual_rf
+        # Fixed Income section
+        if line == "Renda Fixa" and i + 1 < len(lines):
+            # Next line has total fixed income percentage
+            fixed_income_percentage = extract_percentage(lines[i+1])
+            if fixed_income_percentage:
+                summary.fixed_income_percentage = fixed_income_percentage
             
             i += 2
-            # Pula cabeçalhos e linhas vazias
-            while i < len(linhas) and (linhas[i] in ["Posição a mercado", "% Alocação", "Valor aplicado", ""] or
-                                      linhas[i].startswith("Posição") or linhas[i].startswith("%") or
-                                      linhas[i].startswith("Valor") or not linhas[i]):
+            # Skip headers and empty lines
+            while i < len(lines) and (lines[i] in ["Posição a mercado", "% Alocação", "Valor aplicado", ""] or
+                                      lines[i].startswith("Posição") or lines[i].startswith("%") or
+                                      lines[i].startswith("Valor") or not lines[i]):
                 i += 1
             
-            # Processa títulos de renda fixa
-            while i < len(linhas):
-                linha_atual = linhas[i].strip()  # Remove espaços e caracteres especiais
+            # Process fixed income securities
+            while i < len(lines):
+                current_line = lines[i].strip()  # Remove spaces and special characters
                 
-                # Remove caracteres de controle (form feed, etc.)
-                linha_atual = re.sub(r'[\x00-\x1F\x7F]', '', linha_atual)
+                # Remove control characters (form feed, etc.)
+                current_line = re.sub(r'[\x00-\x1F\x7F]', '', current_line)
                 
-                # Nome do título geralmente contém "CDB", "LCI", "LCA", etc.
-                if (linha_atual and 
-                    ("CDB" in linha_atual.upper() or "LCI" in linha_atual.upper() or 
-                     "LCA" in linha_atual.upper() or "DEB" in linha_atual.upper() or
-                     "TESOURO" in linha_atual.upper() or "NTN" in linha_atual.upper() or
-                     "BANCO" in linha_atual.upper() or "CONSIGNADO" in linha_atual.upper())):
+                # Security name usually contains "CDB", "LCI", "LCA", etc.
+                if (current_line and 
+                    ("CDB" in current_line.upper() or "LCI" in current_line.upper() or 
+                     "LCA" in current_line.upper() or "DEB" in current_line.upper() or
+                     "TESOURO" in current_line.upper() or "NTN" in current_line.upper() or
+                     "BANCO" in current_line.upper() or "CONSIGNADO" in current_line.upper())):
                     
-                    titulo = TituloRendaFixa(
-                        nome=linha_atual,
-                        posicao_mercado=0.0,
-                        percentual_alocacao=0.0,
-                        valor_aplicado=0.0
+                    security = FixedIncomeSecurity(
+                        name=current_line,
+                        market_position=0.0,
+                        allocation_percentage=0.0,
+                        invested_amount=0.0
                     )
                     
-                    # Procura posição a mercado, % alocação e valor aplicado
+                    # Look for market position, % allocation and invested amount
                     j = i + 1
-                    valores_r = []  # Lista para armazenar valores R$ encontrados
-                    percentuais = []  # Lista para armazenar percentuais encontrados
+                    r_values = []  # List to store R$ values found
+                    percentages = []  # List to store percentages found
                     
-                    while j < len(linhas) and j < i + 20:
-                        linha_proc = linhas[j]
+                    while j < len(lines) and j < i + 20:
+                        proc_line = lines[j]
                         
-                        if not linha_proc:
+                        if not proc_line:
                             j += 1
                             continue
                         
-                        # Se encontrar "Conta:" ou outra seção, para
-                        if linha_proc.startswith("Conta:") or "Código do Assessor" in linha_proc:
+                        # If finds "Conta:" or another section, stop
+                        if proc_line.startswith("Conta:") or "Código do Assessor" in proc_line:
                             break
                         
-                        if linha_proc.startswith("R$"):
-                            valor = extrair_valor_monetario(linha_proc)
-                            if valor:
-                                valores_r.append(valor)
+                        if proc_line.startswith("R$"):
+                            value = extract_monetary_value(proc_line)
+                            if value:
+                                r_values.append(value)
                         
-                        if "%" in linha_proc:
-                            percentual = extrair_percentual(linha_proc)
-                            if percentual:
-                                percentuais.append(percentual)
+                        if "%" in proc_line:
+                            percentage = extract_percentage(proc_line)
+                            if percentage:
+                                percentages.append(percentage)
                         
                         j += 1
                     
-                    # Associa valores: primeiro R$ grande é posição a mercado, segundo é valor aplicado
-                    if len(valores_r) >= 1:
-                        titulo.posicao_mercado = valores_r[0]
-                    if len(valores_r) >= 2:
-                        titulo.valor_aplicado = valores_r[1]
-                    elif len(valores_r) == 1 and valores_r[0] < 50000:  # Se só tem um e é pequeno, pode ser valor aplicado
-                        titulo.valor_aplicado = valores_r[0]
-                        titulo.posicao_mercado = valores_r[0]  # Assume que é o mesmo
+                    # Associate values: first large R$ is market position, second is invested amount
+                    if len(r_values) >= 1:
+                        security.market_position = r_values[0]
+                    if len(r_values) >= 2:
+                        security.invested_amount = r_values[1]
+                    elif len(r_values) == 1 and r_values[0] < 50000:  # If only one and it's small, might be invested amount
+                        security.invested_amount = r_values[0]
+                        security.market_position = r_values[0]  # Assume it's the same
                     
-                    if len(percentuais) >= 1:
-                        titulo.percentual_alocacao = percentuais[0]
+                    if len(percentages) >= 1:
+                        security.allocation_percentage = percentages[0]
                     
-                    resumo.titulos_renda_fixa.append(titulo)
+                    summary.fixed_income_securities.append(security)
                     i = j
                 else:
                     i += 1
@@ -424,56 +424,56 @@ def parse_portfolio(portfolio_text: str) -> PortfolioResumo:
         
         i += 1
     
-    # Processa informações adicionais de ações (último preço, preço médio, quantidade)
-    # Busca na seção de detalhes das ações
+    # Process additional stock information (last price, average price, quantity)
+    # Search in stock details section
     i = 0
-    while i < len(linhas):
-        linha = linhas[i]
+    while i < len(lines):
+        line = lines[i]
         
-        # Procura pela seção com "Último preço (R$)"
-        if "Último preço" in linha and "Qtd. total" in (linhas[i+2] if i+2 < len(linhas) else ""):
-            # Próximas linhas têm os dados das ações
+        # Look for section with "Último preço (R$)"
+        if "Último preço" in line and "Qtd. total" in (lines[i+2] if i+2 < len(lines) else ""):
+            # Next lines have stock data
             j = i + 3
-            acao_idx = 0
-            while j < len(linhas) and acao_idx < len(resumo.acoes):
-                # Procura por padrão de data (DD/MM/YYYY)
-                if re.match(r'^\d{2}/\d{2}/\d{4}$', linhas[j]):
-                    if acao_idx < len(resumo.acoes):
-                        acao = resumo.acoes[acao_idx]
+            stock_idx = 0
+            while j < len(lines) and stock_idx < len(summary.stocks):
+                # Look for date pattern (DD/MM/YYYY)
+                if re.match(r'^\d{2}/\d{2}/\d{4}$', lines[j]):
+                    if stock_idx < len(summary.stocks):
+                        stock = summary.stocks[stock_idx]
                         
-                        # Data do investimento
-                        acao.data_investimento = linhas[j]
+                        # Investment date
+                        stock.investment_date = lines[j]
                         
-                        # Preço médio (próxima linha não vazia)
+                        # Average price (next non-empty line)
                         k = j + 1
-                        while k < len(linhas) and not linhas[k]:
+                        while k < len(lines) and not lines[k]:
                             k += 1
-                        if k < len(linhas) and linhas[k].startswith("R$"):
-                            preco_medio = extrair_valor_monetario(linhas[k])
-                            if preco_medio:
-                                acao.preco_medio = preco_medio
+                        if k < len(lines) and lines[k].startswith("R$"):
+                            average_price = extract_monetary_value(lines[k])
+                            if average_price:
+                                stock.average_price = average_price
                         
-                        # Último preço (próxima linha não vazia)
+                        # Last price (next non-empty line)
                         k += 1
-                        while k < len(linhas) and not linhas[k]:
+                        while k < len(lines) and not lines[k]:
                             k += 1
-                        if k < len(linhas) and linhas[k].startswith("R$"):
-                            ultimo_preco = extrair_valor_monetario(linhas[k])
-                            if ultimo_preco:
-                                acao.ultimo_preco = ultimo_preco
+                        if k < len(lines) and lines[k].startswith("R$"):
+                            last_price = extract_monetary_value(lines[k])
+                            if last_price:
+                                stock.last_price = last_price
                         
-                        # Quantidade (próxima linha não vazia)
+                        # Quantity (next non-empty line)
                         k += 1
-                        while k < len(linhas) and not linhas[k]:
+                        while k < len(lines) and not lines[k]:
                             k += 1
-                        if k < len(linhas):
+                        if k < len(lines):
                             try:
-                                quantidade = int(linhas[k])
-                                acao.quantidade = quantidade
+                                quantity = int(lines[k])
+                                stock.quantity = quantity
                             except ValueError:
                                 pass
                         
-                        acao_idx += 1
+                        stock_idx += 1
                         j = k + 1
                     else:
                         j += 1
@@ -482,52 +482,52 @@ def parse_portfolio(portfolio_text: str) -> PortfolioResumo:
             break
         i += 1
     
-    # Processa informações adicionais de fundos (valor aplicado, valor líquido, datas)
+    # Process additional fund information (invested amount, net value, dates)
     i = 0
-    while i < len(linhas):
-        linha = linhas[i]
+    while i < len(lines):
+        line = lines[i]
         
-        # Procura pela seção com "Valor aplicado" e "Valor líquido"
-        if "Valor aplicado" in linha and "Valor líquido" in linha:
+        # Look for section with "Valor aplicado" and "Valor líquido"
+        if "Valor aplicado" in line and "Valor líquido" in line:
             j = i + 1
-            fundo_idx = 0
-            while j < len(linhas) and fundo_idx < len(resumo.fundos):
-                # Procura por padrão de data (DD/MM/YYYY)
-                if re.match(r'^\d{2}/\d{2}/\d{4}$', linhas[j]):
-                    if fundo_idx < len(resumo.fundos):
-                        fundo = resumo.fundos[fundo_idx]
+            fund_idx = 0
+            while j < len(lines) and fund_idx < len(summary.funds):
+                # Look for date pattern (DD/MM/YYYY)
+                if re.match(r'^\d{2}/\d{2}/\d{4}$', lines[j]):
+                    if fund_idx < len(summary.funds):
+                        fund = summary.funds[fund_idx]
                         
-                        # Data do investimento
-                        fundo.data_investimento = linhas[j]
+                        # Investment date
+                        fund.investment_date = lines[j]
                         
-                        # Valor aplicado (próxima linha não vazia)
+                        # Invested amount (next non-empty line)
                         k = j + 1
-                        while k < len(linhas) and not linhas[k]:
+                        while k < len(lines) and not lines[k]:
                             k += 1
-                        if k < len(linhas) and linhas[k].startswith("R$"):
-                            valor_apl = extrair_valor_monetario(linhas[k])
-                            if valor_apl:
-                                fundo.valor_aplicado = valor_apl
+                        if k < len(lines) and lines[k].startswith("R$"):
+                            invested_amount = extract_monetary_value(lines[k])
+                            if invested_amount:
+                                fund.invested_amount = invested_amount
                         
-                        # Valor líquido (próxima linha não vazia)
+                        # Net value (next non-empty line)
                         k += 1
-                        while k < len(linhas) and not linhas[k]:
+                        while k < len(lines) and not lines[k]:
                             k += 1
-                        if k < len(linhas) and linhas[k].startswith("R$"):
-                            valor_liq = extrair_valor_monetario(linhas[k])
-                            if valor_liq:
-                                fundo.valor_liquido = valor_liq
+                        if k < len(lines) and lines[k].startswith("R$"):
+                            net_value = extract_monetary_value(lines[k])
+                            if net_value:
+                                fund.net_value = net_value
                         
-                        # Data da cota (próxima linha não vazia)
+                        # Quota date (next non-empty line)
                         k += 1
-                        while k < len(linhas) and not linhas[k]:
+                        while k < len(lines) and not lines[k]:
                             k += 1
-                        if k < len(linhas):
-                            data_cota = linhas[k]
-                            if re.match(r'^\d{2}/\d{2}/\d{4}$', data_cota):
-                                fundo.data_cota = data_cota
+                        if k < len(lines):
+                            quota_date = lines[k]
+                            if re.match(r'^\d{2}/\d{2}/\d{4}$', quota_date):
+                                fund.quota_date = quota_date
                         
-                        fundo_idx += 1
+                        fund_idx += 1
                         j = k + 1
                     else:
                         j += 1
@@ -536,64 +536,64 @@ def parse_portfolio(portfolio_text: str) -> PortfolioResumo:
             break
         i += 1
     
-    # Processa informações adicionais de renda fixa (taxa, datas)
+    # Process additional fixed income information (rate, dates)
     i = 0
-    while i < len(linhas):
-        linha = linhas[i]
+    while i < len(lines):
+        line = lines[i]
         
-        # Procura pela seção com "Taxa a mercado" ou "Data do investimento" seguido de "Taxa a mercado"
-        if "Taxa a mercado" in linha:
-            # Verifica se há "Data aplicação" nas próximas linhas
-            tem_data_aplicacao = False
-            for k in range(i+1, min(i+5, len(linhas))):
-                if "Data aplicação" in linhas[k]:
-                    tem_data_aplicacao = True
+        # Look for section with "Taxa a mercado" or "Data do investimento" followed by "Taxa a mercado"
+        if "Taxa a mercado" in line:
+            # Check if there's "Data aplicação" in next lines
+            has_application_date = False
+            for k in range(i+1, min(i+5, len(lines))):
+                if "Data aplicação" in lines[k]:
+                    has_application_date = True
                     break
             
-            if tem_data_aplicacao:
-                # Procura o cabeçalho "Data do investimento" antes
+            if has_application_date:
+                # Look for "Data do investimento" header before
                 j = i - 1
-                while j >= 0 and "Data do investimento" not in linhas[j]:
+                while j >= 0 and "Data do investimento" not in lines[j]:
                     j -= 1
                 
                 if j >= 0:
-                    # Pula cabeçalhos e vai para os dados
+                    # Skip headers and go to data
                     j = i + 1
-                    while j < len(linhas) and (not linhas[j] or "Data" in linhas[j] or "Taxa" in linhas[j]):
+                    while j < len(lines) and (not lines[j] or "Data" in lines[j] or "Taxa" in lines[j]):
                         j += 1
                     
-                    titulo_idx = 0
-                    while j < len(linhas) and titulo_idx < len(resumo.titulos_renda_fixa):
-                        # Procura por padrão de data (DD/MM/YYYY)
-                        if re.match(r'^\d{2}/\d{2}/\d{4}$', linhas[j]):
-                            if titulo_idx < len(resumo.titulos_renda_fixa):
-                                titulo = resumo.titulos_renda_fixa[titulo_idx]
+                    security_idx = 0
+                    while j < len(lines) and security_idx < len(summary.fixed_income_securities):
+                        # Look for date pattern (DD/MM/YYYY)
+                        if re.match(r'^\d{2}/\d{2}/\d{4}$', lines[j]):
+                            if security_idx < len(summary.fixed_income_securities):
+                                security = summary.fixed_income_securities[security_idx]
                                 
-                                # Data do investimento
-                                titulo.data_investimento = linhas[j]
+                                # Investment date
+                                security.investment_date = lines[j]
                                 
-                                # Taxa a mercado (próxima linha não vazia)
+                                # Market rate (next non-empty line)
                                 k = j + 1
-                                while k < len(linhas) and not linhas[k]:
+                                while k < len(lines) and not lines[k]:
                                     k += 1
-                                if k < len(linhas):
-                                    titulo.taxa_mercado = linhas[k]
+                                if k < len(lines):
+                                    security.market_rate = lines[k]
                                 
-                                # Data aplicação (próxima linha não vazia)
+                                # Application date (next non-empty line)
                                 k += 1
-                                while k < len(linhas) and not linhas[k]:
+                                while k < len(lines) and not lines[k]:
                                     k += 1
-                                if k < len(linhas) and re.match(r'^\d{2}/\d{2}/\d{4}$', linhas[k]):
-                                    titulo.data_aplicacao = linhas[k]
+                                if k < len(lines) and re.match(r'^\d{2}/\d{2}/\d{4}$', lines[k]):
+                                    security.application_date = lines[k]
                                 
-                                # Data vencimento (próxima linha não vazia)
+                                # Maturity date (next non-empty line)
                                 k += 1
-                                while k < len(linhas) and not linhas[k]:
+                                while k < len(lines) and not lines[k]:
                                     k += 1
-                                if k < len(linhas) and re.match(r'^\d{2}/\d{2}/\d{4}$', linhas[k]):
-                                    titulo.data_vencimento = linhas[k]
+                                if k < len(lines) and re.match(r'^\d{2}/\d{2}/\d{4}$', lines[k]):
+                                    security.maturity_date = lines[k]
                                 
-                                titulo_idx += 1
+                                security_idx += 1
                                 j = k + 1
                             else:
                                 j += 1
@@ -602,100 +602,100 @@ def parse_portfolio(portfolio_text: str) -> PortfolioResumo:
                 break
         i += 1
     
-    return resumo
+    return summary
 
 
-def formatar_resumo_portfolio(resumo: PortfolioResumo) -> str:
+def format_portfolio_summary(summary: PortfolioSummary) -> str:
     """
-    Formata o resumo do portfólio em uma string legível.
+    Formats the portfolio summary into a readable string.
     
     Args:
-        resumo: PortfolioResumo com as informações extraídas
+        summary: PortfolioSummary with extracted information
         
     Returns:
-        String formatada com o resumo
+        Formatted string with the summary
     """
     output = []
     output.append("=" * 80)
-    output.append("RESUMO DO PORTFÓLIO")
+    output.append("PORTFOLIO SUMMARY")
     output.append("=" * 80)
     output.append("")
     
-    # Informações básicas
-    output.append(f"Nome do Cliente: {resumo.nome_cliente}")
-    output.append(f"Patrimônio Total: R$ {resumo.patrimonio_total:,.2f}")
-    output.append(f"Total Investido: R$ {resumo.total_investido:,.2f}")
-    output.append(f"Saldo Disponível: R$ {resumo.saldo_disponivel:,.2f}")
+    # Basic information
+    output.append(f"Client Name: {summary.client_name}")
+    output.append(f"Total Assets: R$ {summary.total_assets:,.2f}")
+    output.append(f"Total Invested: R$ {summary.total_invested:,.2f}")
+    output.append(f"Available Balance: R$ {summary.available_balance:,.2f}")
     output.append("")
     
-    # Ações
+    # Stocks
     output.append("-" * 80)
-    output.append(f"AÇÕES - {resumo.percentual_acoes:.2f}% do portfólio")
+    output.append(f"STOCKS - {summary.stocks_percentage:.2f}% of portfolio")
     output.append("-" * 80)
-    if resumo.acoes:
-        for acao in resumo.acoes:
-            output.append(f"\nCódigo: {acao.codigo}")
-            output.append(f"  Posição: R$ {acao.posicao:,.2f}")
-            output.append(f"  % Alocação: {acao.percentual_alocacao:.2f}%")
-            output.append(f"  Rentabilidade: {acao.rentabilidade:.2f}%")
-            if acao.retorno_mensal is not None:
-                output.append(f"  Retorno Mensal: {acao.retorno_mensal:.2f}%")
-            if acao.ultimo_preco:
-                output.append(f"  Último Preço: R$ {acao.ultimo_preco:.2f}")
-            if acao.preco_mes_anterior:
-                output.append(f"  Preço Mês Anterior: R$ {acao.preco_mes_anterior:.2f}")
-            if acao.preco_medio:
-                output.append(f"  Preço Médio: R$ {acao.preco_medio:.2f}")
-            if acao.quantidade:
-                output.append(f"  Quantidade: {acao.quantidade}")
-            if acao.data_investimento:
-                output.append(f"  Data do Investimento: {acao.data_investimento}")
+    if summary.stocks:
+        for stock in summary.stocks:
+            output.append(f"\nCode: {stock.code}")
+            output.append(f"  Position: R$ {stock.position:,.2f}")
+            output.append(f"  % Allocation: {stock.allocation_percentage:.2f}%")
+            output.append(f"  Return Rate: {stock.return_rate:.2f}%")
+            if stock.monthly_return is not None:
+                output.append(f"  Monthly Return: {stock.monthly_return:.2f}%")
+            if stock.last_price:
+                output.append(f"  Last Price: R$ {stock.last_price:.2f}")
+            if stock.previous_month_price:
+                output.append(f"  Previous Month Price: R$ {stock.previous_month_price:.2f}")
+            if stock.average_price:
+                output.append(f"  Average Price: R$ {stock.average_price:.2f}")
+            if stock.quantity:
+                output.append(f"  Quantity: {stock.quantity}")
+            if stock.investment_date:
+                output.append(f"  Investment Date: {stock.investment_date}")
     else:
-        output.append("Nenhuma ação encontrada.")
+        output.append("No stocks found.")
     output.append("")
     
-    # Fundos
+    # Funds
     output.append("-" * 80)
-    output.append(f"FUNDOS DE INVESTIMENTO - {resumo.percentual_fundos:.2f}% do portfólio")
+    output.append(f"INVESTMENT FUNDS - {summary.funds_percentage:.2f}% of portfolio")
     output.append("-" * 80)
-    if resumo.fundos:
-        for fundo in resumo.fundos:
-            output.append(f"\nNome: {fundo.nome}")
-            output.append(f"  Posição: R$ {fundo.posicao:,.2f}")
-            output.append(f"  % Alocação: {fundo.percentual_alocacao:.2f}%")
-            output.append(f"  Rentabilidade: {fundo.rentabilidade:.2f}%")
-            if fundo.valor_aplicado:
-                output.append(f"  Valor Aplicado: R$ {fundo.valor_aplicado:,.2f}")
-            if fundo.valor_liquido:
-                output.append(f"  Valor Líquido: R$ {fundo.valor_liquido:,.2f}")
-            if fundo.data_investimento:
-                output.append(f"  Data do Investimento: {fundo.data_investimento}")
-            if fundo.data_cota:
-                output.append(f"  Data da Cota: {fundo.data_cota}")
+    if summary.funds:
+        for fund in summary.funds:
+            output.append(f"\nName: {fund.name}")
+            output.append(f"  Position: R$ {fund.position:,.2f}")
+            output.append(f"  % Allocation: {fund.allocation_percentage:.2f}%")
+            output.append(f"  Return Rate: {fund.return_rate:.2f}%")
+            if fund.invested_amount:
+                output.append(f"  Invested Amount: R$ {fund.invested_amount:,.2f}")
+            if fund.net_value:
+                output.append(f"  Net Value: R$ {fund.net_value:,.2f}")
+            if fund.investment_date:
+                output.append(f"  Investment Date: {fund.investment_date}")
+            if fund.quota_date:
+                output.append(f"  Quota Date: {fund.quota_date}")
     else:
-        output.append("Nenhum fundo encontrado.")
+        output.append("No funds found.")
     output.append("")
     
-    # Renda Fixa
+    # Fixed Income
     output.append("-" * 80)
-    output.append(f"RENDA FIXA - {resumo.percentual_renda_fixa:.2f}% do portfólio")
+    output.append(f"FIXED INCOME - {summary.fixed_income_percentage:.2f}% of portfolio")
     output.append("-" * 80)
-    if resumo.titulos_renda_fixa:
-        for titulo in resumo.titulos_renda_fixa:
-            output.append(f"\nNome: {titulo.nome}")
-            output.append(f"  Posição a Mercado: R$ {titulo.posicao_mercado:,.2f}")
-            output.append(f"  % Alocação: {titulo.percentual_alocacao:.2f}%")
-            output.append(f"  Valor Aplicado: R$ {titulo.valor_aplicado:,.2f}")
-            if titulo.taxa_mercado:
-                output.append(f"  Taxa a Mercado: {titulo.taxa_mercado}")
-            if titulo.data_aplicacao:
-                output.append(f"  Data de Aplicação: {titulo.data_aplicacao}")
-            if titulo.data_vencimento:
-                output.append(f"  Data de Vencimento: {titulo.data_vencimento}")
-            if titulo.data_investimento:
-                output.append(f"  Data do Investimento: {titulo.data_investimento}")
+    if summary.fixed_income_securities:
+        for security in summary.fixed_income_securities:
+            output.append(f"\nName: {security.name}")
+            output.append(f"  Market Position: R$ {security.market_position:,.2f}")
+            output.append(f"  % Allocation: {security.allocation_percentage:.2f}%")
+            output.append(f"  Invested Amount: R$ {security.invested_amount:,.2f}")
+            if security.market_rate:
+                output.append(f"  Market Rate: {security.market_rate}")
+            if security.application_date:
+                output.append(f"  Application Date: {security.application_date}")
+            if security.maturity_date:
+                output.append(f"  Maturity Date: {security.maturity_date}")
+            if security.investment_date:
+                output.append(f"  Investment Date: {security.investment_date}")
     else:
-        output.append("Nenhum título de renda fixa encontrado.")
+        output.append("No fixed income securities found.")
     output.append("")
     
     output.append("=" * 80)
@@ -703,237 +703,237 @@ def formatar_resumo_portfolio(resumo: PortfolioResumo) -> str:
     return "\n".join(output)
 
 
-def sumarizar_portfolio(arquivo_ou_texto: Union[str, Path]) -> PortfolioResumo:
+def summarize_portfolio(file_or_text: Union[str, Path]) -> PortfolioSummary:
     """
-    Função principal para processar um arquivo de portfólio e retornar resumo estruturado.
+    Main function to process a portfolio file and return structured summary.
     
     Args:
-        arquivo_ou_texto: Caminho do arquivo (Path ou str) ou texto do portfólio
+        file_or_text: File path (Path or str) or portfolio text
         
     Returns:
-        PortfolioResumo com todas as informações extraídas
+        PortfolioSummary with all extracted information
         
     Example:
-        >>> from src import sumarizar_portfolio
-        >>> resumo = sumarizar_portfolio("Input/XP - Albert_s portfolio.txt")
-        >>> print(resumo.nome_cliente)
-        >>> print(resumo.patrimonio_total)
+        >>> from src import summarize_portfolio
+        >>> summary = summarize_portfolio("Input/XP - Albert_s portfolio.txt")
+        >>> print(summary.client_name)
+        >>> print(summary.total_assets)
     """
-    # Se for um Path ou string que parece um caminho de arquivo, lê o arquivo
-    if isinstance(arquivo_ou_texto, Path) or (isinstance(arquivo_ou_texto, str) and 
-                                               (Path(arquivo_ou_texto).exists() or 
-                                                arquivo_ou_texto.endswith('.txt'))):
+    # If it's a Path or string that looks like a file path, read the file
+    if isinstance(file_or_text, Path) or (isinstance(file_or_text, str) and 
+                                               (Path(file_or_text).exists() or 
+                                                file_or_text.endswith('.txt'))):
         try:
-            caminho = Path(arquivo_ou_texto)
-            with open(caminho, 'r', encoding='utf-8') as f:
-                texto = f.read()
+            path = Path(file_or_text)
+            with open(path, 'r', encoding='utf-8') as f:
+                text = f.read()
         except FileNotFoundError:
-            # Se não encontrar o arquivo, assume que é texto
-            texto = str(arquivo_ou_texto)
+            # If file not found, assume it's text
+            text = str(file_or_text)
     else:
-        # Assume que é texto
-        texto = str(arquivo_ou_texto)
+        # Assume it's text
+        text = str(file_or_text)
     
-    return parse_portfolio(texto)
+    return parse_portfolio(text)
 
 
-def calcular_retorno_mensal_acoes(
-    portfolio_resumo: PortfolioResumo,
-    usar_ultimo_preco_portfolio: bool = False
-) -> PortfolioResumo:
+def calculate_monthly_stock_returns(
+    portfolio_summary: PortfolioSummary,
+    use_portfolio_last_price: bool = False
+) -> PortfolioSummary:
     """
-    Calcula o retorno mensal total de cada ação no portfólio usando yfinance.
+    Calculates the total monthly return of each stock in the portfolio using yfinance.
     
-    O retorno é calculado usando preços ajustados (auto_adjust=True):
-    - Usa auto_adjust=True para obter preços já ajustados para dividendos e desdobramentos
-    - A coluna "Close" com auto_adjust=True contém os preços ajustados
-    - Compara o último preço disponível com o preço de 1 mês atrás
-    - O retorno total já inclui todos os ajustes (dividendos, desdobramentos, etc.)
+    The return is calculated using adjusted prices (auto_adjust=True):
+    - Uses auto_adjust=True to get prices already adjusted for dividends and splits
+    - The "Close" column with auto_adjust=True contains adjusted prices
+    - Compares the last available price with the price from 1 month ago
+    - The total return already includes all adjustments (dividends, splits, etc.)
     
     Args:
-        portfolio_resumo: PortfolioResumo com as ações do cliente
-        usar_ultimo_preco_portfolio: Se True, atualiza o último preço do portfólio com o Adj Close.
-                                     Se False, mantém o preço original do portfólio.
-                                     O cálculo do retorno sempre usa Adj Close do yfinance.
+        portfolio_summary: PortfolioSummary with client's stocks
+        use_portfolio_last_price: If True, updates the portfolio's last price with adjusted price.
+                                     If False, keeps the original portfolio price.
+                                     The return calculation always uses adjusted prices from yfinance.
         
     Returns:
-        PortfolioResumo com os campos retorno_mensal e preco_mes_anterior preenchidos
+        PortfolioSummary with monthly_return and previous_month_price fields filled
         
     Example:
-        >>> from src import sumarizar_portfolio, calcular_retorno_mensal_acoes
-        >>> resumo = sumarizar_portfolio("Input/XP - Albert_s portfolio.txt")
-        >>> resumo = calcular_retorno_mensal_acoes(resumo)
-        >>> for acao in resumo.acoes:
-        ...     print(f"{acao.codigo}: {acao.retorno_mensal:.2f}%")
+        >>> from src import summarize_portfolio, calculate_monthly_stock_returns
+        >>> summary = summarize_portfolio("Input/XP - Albert_s portfolio.txt")
+        >>> summary = calculate_monthly_stock_returns(summary)
+        >>> for stock in summary.stocks:
+        ...     print(f"{stock.code}: {stock.monthly_return:.2f}%")
     """
     if not YFINANCE_AVAILABLE:
         raise ImportError(
-            "yfinance não está instalado. Instale com: pip install yfinance"
+            "yfinance is not installed. Install with: pip install yfinance"
         )
     
-    for acao in portfolio_resumo.acoes:
+    for stock in portfolio_summary.stocks:
         try:
-            # Para ações brasileiras, adiciona sufixo .SA
-            codigo_yfinance = f"{acao.codigo}.SA"
+            # For Brazilian stocks, add .SA suffix
+            yfinance_code = f"{stock.code}.SA"
             
-            # Busca dados históricos com auto_adjust=True para obter preços ajustados
-            # auto_adjust=True retorna preços já ajustados para dividendos e desdobramentos na coluna "Close"
-            ticker = yf.Ticker(codigo_yfinance)
+            # Fetch historical data with auto_adjust=True to get adjusted prices
+            # auto_adjust=True returns prices already adjusted for dividends and splits in the "Close" column
+            ticker = yf.Ticker(yfinance_code)
             hist = ticker.history(period="3mo", auto_adjust=True)
             
             if hist.empty:
-                print(f"Aviso: Não foi possível obter dados para {acao.codigo}")
+                print(f"Warning: Could not get data for {stock.code}")
                 continue
             
-            # Verifica se temos a coluna Close (que contém os preços ajustados quando auto_adjust=True)
+            # Check if we have the Close column (which contains adjusted prices when auto_adjust=True)
             if 'Close' not in hist.columns:
-                print(f"Aviso: Dados de preços não disponíveis para {acao.codigo}")
+                print(f"Warning: Price data not available for {stock.code}")
                 continue
             
-            # Pega o último preço disponível (Close com auto_adjust=True já considera dividendos e desdobramentos)
-            data_atual = hist.index[-1]
-            ultimo_preco_adj = hist['Close'].iloc[-1]
+            # Get last available price (Close with auto_adjust=True already considers dividends and splits)
+            current_date = hist.index[-1]
+            last_price_adj = hist['Close'].iloc[-1]
             
-            # Atualiza o último preço do portfólio se solicitado
-            if usar_ultimo_preco_portfolio:
-                acao.ultimo_preco = ultimo_preco_adj
+            # Update portfolio's last price if requested
+            if use_portfolio_last_price:
+                stock.last_price = last_price_adj
             
-            # Calcula a data de 1 mês atrás (aproximadamente 30 dias)
-            # Procura na janela de 25 a 35 dias atrás para ter flexibilidade com dias não úteis
-            data_inicio = data_atual - timedelta(days=35)
-            data_fim = data_atual - timedelta(days=25)
+            # Calculate date from 1 month ago (approximately 30 days)
+            # Search in window of 25 to 35 days ago for flexibility with non-trading days
+            start_date = current_date - timedelta(days=35)
+            end_date = current_date - timedelta(days=25)
             
-            # Filtra dados nessa janela
-            dados_mes_anterior = hist[(hist.index >= data_inicio) & (hist.index <= data_fim)]
+            # Filter data in this window
+            previous_month_data = hist[(hist.index >= start_date) & (hist.index <= end_date)]
             
-            if dados_mes_anterior.empty:
-                # Se não encontrar dados na janela, tenta pegar o mais antigo disponível
-                # que seja pelo menos 20 dias atrás
-                dados_antigos = hist[hist.index <= (data_atual - timedelta(days=20))]
-                if not dados_antigos.empty:
-                    preco_mes_anterior_adj = dados_antigos['Close'].iloc[-1]
-                    data_mes_anterior = dados_antigos.index[-1]
+            if previous_month_data.empty:
+                # If no data in window, try to get the oldest available
+                # that is at least 20 days ago
+                old_data = hist[hist.index <= (current_date - timedelta(days=20))]
+                if not old_data.empty:
+                    previous_month_price_adj = old_data['Close'].iloc[-1]
+                    previous_month_date = old_data.index[-1]
                 else:
-                    print(f"Aviso: Não foi possível encontrar preço de 1 mês atrás para {acao.codigo}")
+                    print(f"Warning: Could not find price from 1 month ago for {stock.code}")
                     continue
             else:
-                # Pega o preço mais próximo da data desejada (último da janela)
-                preco_mes_anterior_adj = dados_mes_anterior['Close'].iloc[-1]
-                data_mes_anterior = dados_mes_anterior.index[-1]
+                # Get price closest to desired date (last in window)
+                previous_month_price_adj = previous_month_data['Close'].iloc[-1]
+                previous_month_date = previous_month_data.index[-1]
             
-            # Calcula o retorno mensal total usando preços ajustados
-            # Com auto_adjust=True, a coluna Close já considera dividendos, desdobramentos, etc.
-            # Retorno = (Preço Atual - Preço Mês Anterior) / Preço Mês Anterior * 100
-            retorno_mensal = ((ultimo_preco_adj - preco_mes_anterior_adj) / preco_mes_anterior_adj) * 100
+            # Calculate total monthly return using adjusted prices
+            # With auto_adjust=True, the Close column already considers dividends, splits, etc.
+            # Return = (Current Price - Previous Month Price) / Previous Month Price * 100
+            monthly_return = ((last_price_adj - previous_month_price_adj) / previous_month_price_adj) * 100
             
-            # Atualiza os campos da ação
-            acao.retorno_mensal = retorno_mensal
-            acao.preco_mes_anterior = preco_mes_anterior_adj
+            # Update stock fields
+            stock.monthly_return = monthly_return
+            stock.previous_month_price = previous_month_price_adj
             
-            # Se não tinha último preço, atualiza com o do yfinance
-            if not acao.ultimo_preco:
-                acao.ultimo_preco = ultimo_preco_adj
+            # If didn't have last price, update with yfinance one
+            if not stock.last_price:
+                stock.last_price = last_price_adj
                 
         except Exception as e:
-            print(f"Erro ao calcular retorno mensal para {acao.codigo}: {str(e)}")
+            print(f"Error calculating monthly return for {stock.code}: {str(e)}")
             import traceback
             traceback.print_exc()
             continue
     
-    return portfolio_resumo
+    return portfolio_summary
 
 
-def calcular_retorno_mensal_acoes_lista(
-    acoes: List[Acao],
-    usar_ultimo_preco_portfolio: bool = False
-) -> List[Acao]:
+def calculate_monthly_stock_returns_list(
+    stocks: List[Stock],
+    use_portfolio_last_price: bool = False
+) -> List[Stock]:
     """
-    Calcula o retorno mensal total de uma lista de ações usando yfinance.
+    Calculates the total monthly return of a list of stocks using yfinance.
     
-    O retorno é calculado usando preços ajustados (auto_adjust=True):
-    - Usa auto_adjust=True para obter preços já ajustados para dividendos e desdobramentos
-    - A coluna "Close" com auto_adjust=True contém os preços ajustados
-    - Compara o último preço disponível com o preço de 1 mês atrás
+    The return is calculated using adjusted prices (auto_adjust=True):
+    - Uses auto_adjust=True to get prices already adjusted for dividends and splits
+    - The "Close" column with auto_adjust=True contains adjusted prices
+    - Compares the last available price with the price from 1 month ago
     
     Args:
-        acoes: Lista de objetos Acao
-        usar_ultimo_preco_portfolio: Se True, atualiza o último preço do portfólio com o preço ajustado.
-                                     Se False, mantém o preço original do portfólio.
-                                     O cálculo do retorno sempre usa preços ajustados do yfinance.
+        stocks: List of Stock objects
+        use_portfolio_last_price: If True, updates the portfolio's last price with adjusted price.
+                                     If False, keeps the original portfolio price.
+                                     The return calculation always uses adjusted prices from yfinance.
         
     Returns:
-        Lista de ações com os campos retorno_mensal e preco_mes_anterior preenchidos
+        List of stocks with monthly_return and previous_month_price fields filled
     """
     if not YFINANCE_AVAILABLE:
         raise ImportError(
-            "yfinance não está instalado. Instale com: pip install yfinance"
+            "yfinance is not installed. Install with: pip install yfinance"
         )
     
-    for acao in acoes:
+    for stock in stocks:
         try:
-            # Para ações brasileiras, adiciona sufixo .SA
-            codigo_yfinance = f"{acao.codigo}.SA"
+            # For Brazilian stocks, add .SA suffix
+            yfinance_code = f"{stock.code}.SA"
             
-            # Busca dados históricos com auto_adjust=True para obter preços ajustados
-            # auto_adjust=True retorna preços já ajustados para dividendos e desdobramentos na coluna "Close"
-            ticker = yf.Ticker(codigo_yfinance)
+            # Fetch historical data with auto_adjust=True to get adjusted prices
+            # auto_adjust=True returns prices already adjusted for dividends and splits in the "Close" column
+            ticker = yf.Ticker(yfinance_code)
             hist = ticker.history(period="3mo", auto_adjust=True)
             
             if hist.empty:
-                print(f"Aviso: Não foi possível obter dados para {acao.codigo}")
+                print(f"Warning: Could not get data for {stock.code}")
                 continue
             
-            # Verifica se temos a coluna Close (que contém os preços ajustados quando auto_adjust=True)
+            # Check if we have the Close column (which contains adjusted prices when auto_adjust=True)
             if 'Close' not in hist.columns:
-                print(f"Aviso: Dados de preços não disponíveis para {acao.codigo}")
+                print(f"Warning: Price data not available for {stock.code}")
                 continue
             
-            # Pega o último preço disponível (Close com auto_adjust=True já considera dividendos e desdobramentos)
-            data_atual = hist.index[-1]
-            ultimo_preco_adj = hist['Close'].iloc[-1]
+            # Get last available price (Close with auto_adjust=True already considers dividends and splits)
+            current_date = hist.index[-1]
+            last_price_adj = hist['Close'].iloc[-1]
             
-            # Atualiza o último preço do portfólio se solicitado
-            if usar_ultimo_preco_portfolio:
-                acao.ultimo_preco = ultimo_preco_adj
+            # Update portfolio's last price if requested
+            if use_portfolio_last_price:
+                stock.last_price = last_price_adj
             
-            # Calcula a data de 1 mês atrás (aproximadamente 30 dias)
-            # Procura na janela de 25 a 35 dias atrás para ter flexibilidade com dias não úteis
-            data_inicio = data_atual - timedelta(days=35)
-            data_fim = data_atual - timedelta(days=25)
+            # Calculate date from 1 month ago (approximately 30 days)
+            # Search in window of 25 to 35 days ago for flexibility with non-trading days
+            start_date = current_date - timedelta(days=35)
+            end_date = current_date - timedelta(days=25)
             
-            # Filtra dados nessa janela
-            dados_mes_anterior = hist[(hist.index >= data_inicio) & (hist.index <= data_fim)]
+            # Filter data in this window
+            previous_month_data = hist[(hist.index >= start_date) & (hist.index <= end_date)]
             
-            if dados_mes_anterior.empty:
-                # Se não encontrar dados na janela, tenta pegar o mais antigo disponível
-                # que seja pelo menos 20 dias atrás
-                dados_antigos = hist[hist.index <= (data_atual - timedelta(days=20))]
-                if not dados_antigos.empty:
-                    preco_mes_anterior_adj = dados_antigos['Close'].iloc[-1]
-                    data_mes_anterior = dados_antigos.index[-1]
+            if previous_month_data.empty:
+                # If no data in window, try to get the oldest available
+                # that is at least 20 days ago
+                old_data = hist[hist.index <= (current_date - timedelta(days=20))]
+                if not old_data.empty:
+                    previous_month_price_adj = old_data['Close'].iloc[-1]
+                    previous_month_date = old_data.index[-1]
                 else:
-                    print(f"Aviso: Não foi possível encontrar preço de 1 mês atrás para {acao.codigo}")
+                    print(f"Warning: Could not find price from 1 month ago for {stock.code}")
                     continue
             else:
-                preco_mes_anterior_adj = dados_mes_anterior['Close'].iloc[-1]
-                data_mes_anterior = dados_mes_anterior.index[-1]
+                previous_month_price_adj = previous_month_data['Close'].iloc[-1]
+                previous_month_date = previous_month_data.index[-1]
             
-            # Calcula o retorno mensal total usando preços ajustados
-            # Com auto_adjust=True, a coluna Close já considera dividendos, desdobramentos, etc.
-            retorno_mensal = ((ultimo_preco_adj - preco_mes_anterior_adj) / preco_mes_anterior_adj) * 100
+            # Calculate total monthly return using adjusted prices
+            # With auto_adjust=True, the Close column already considers dividends, splits, etc.
+            monthly_return = ((last_price_adj - previous_month_price_adj) / previous_month_price_adj) * 100
             
-            # Atualiza os campos da ação
-            acao.retorno_mensal = retorno_mensal
-            acao.preco_mes_anterior = preco_mes_anterior_adj
+            # Update stock fields
+            stock.monthly_return = monthly_return
+            stock.previous_month_price = previous_month_price_adj
             
-            # Se não tinha último preço, atualiza com o do yfinance
-            if not acao.ultimo_preco:
-                acao.ultimo_preco = ultimo_preco_adj
+            # If didn't have last price, update with yfinance one
+            if not stock.last_price:
+                stock.last_price = last_price_adj
                 
         except Exception as e:
-            print(f"Erro ao calcular retorno mensal para {acao.codigo}: {str(e)}")
+            print(f"Error calculating monthly return for {stock.code}: {str(e)}")
             import traceback
             traceback.print_exc()
             continue
     
-    return acoes
+    return stocks

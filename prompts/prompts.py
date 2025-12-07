@@ -1,15 +1,15 @@
-"""Templates de prompts para geração de conteúdo com IA."""
+"""Prompt templates for AI content generation."""
 
 
 def get_portfolio_prompt(portfolio_data: str) -> str:
     """
-    Retorna o prompt para resumo dos resultados do portfólio.
+    Returns the prompt for portfolio results summary.
     
     Args:
-        portfolio_data: Dados do portfólio
+        portfolio_data: Portfolio data
         
     Returns:
-        Prompt formatado
+        Formatted prompt
     """
     return """## Prompt: Summarize the Client's Portfolio Results
 
@@ -46,13 +46,13 @@ Below is the portfolio data and performance commentary:
 
 def get_risk_profile_prompt(risk_profile_data: str) -> str:
     """
-    Retorna o prompt para resumo do perfil de risco.
+    Returns the prompt for risk profile summary.
     
     Args:
-        risk_profile_data: Dados do perfil de risco
+        risk_profile_data: Risk profile data
         
     Returns:
-        Prompt formatado
+        Formatted prompt
     """
     return """## Prompt: Summarize the Client's Risk Profile
 
@@ -97,13 +97,13 @@ Below is the full client profile:
 
 def get_macro_outlook_prompt(macro_data: str) -> str:
     """
-    Retorna o prompt para resumo da perspectiva macroeconômica.
+    Returns the prompt for macroeconomic outlook summary.
     
     Args:
-        macro_data: Dados da análise macroeconômica
+        macro_data: Macroeconomic analysis data
         
     Returns:
-        Prompt formatado
+        Formatted prompt
     """
     return """## Prompt: Summarize the Macroeconomic Outlook
 
@@ -152,15 +152,15 @@ def get_investment_letter_prompt(
     portfolio_results_summary: str
 ) -> str:
     """
-    Retorna o prompt para geração da carta de investimento.
+    Returns the prompt for investment letter generation.
     
     Args:
-        risk_profile_summary: Resumo do perfil de risco
-        macro_outlook_summary: Resumo da perspectiva macroeconômica
-        portfolio_results_summary: Resumo dos resultados do portfólio
+        risk_profile_summary: Risk profile summary
+        macro_outlook_summary: Macroeconomic outlook summary
+        portfolio_results_summary: Portfolio results summary
         
     Returns:
-        Prompt formatado
+        Formatted prompt
     """
     return """## Prompt: Write the Monthly Investment Letter (in Portuguese)
 
@@ -225,4 +225,3 @@ Below are the outputs from the previous steps:
         macro_outlook=macro_outlook_summary,
         portfolio_results=portfolio_results_summary
     )
-

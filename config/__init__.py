@@ -1,4 +1,4 @@
-"""Configurações do projeto."""
+"""Project configuration."""
 
 from .settings import (
     MODEL,
@@ -23,4 +23,3 @@ __all__ = [
     "MACRO_ANALYSIS_FILE",
     "OUTPUT_FILE",
 ]
-

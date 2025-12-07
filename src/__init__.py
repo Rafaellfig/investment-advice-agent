@@ -1,4 +1,4 @@
-"""Módulos de serviços e utilitários."""
+"""Service and utility modules."""
 
 from .file_utils import read_file, write_file
 from .ai_service import (
@@ -10,17 +10,14 @@ from .ai_service import (
 )
 from .portfolio_parser import (
     parse_portfolio,
-    formatar_resumo_portfolio,
-    sumarizar_portfolio,
-    calcular_retorno_mensal_acoes,
-    calcular_retorno_mensal_acoes_lista,
-    calcular_retorno_mensal_fundos,
-    calcular_retorno_mensal_renda_fixa,
-    calcular_retorno_mensal_completo,
-    PortfolioResumo,
-    Acao,
-    FundoInvestimento,
-    TituloRendaFixa,
+    format_portfolio_summary,
+    summarize_portfolio,
+    calculate_monthly_stock_returns,
+    calculate_monthly_stock_returns_list,
+    PortfolioSummary,
+    Stock,
+    InvestmentFund,
+    FixedIncomeSecurity,
 )
 
 __all__ = [
@@ -32,16 +29,12 @@ __all__ = [
     "summarize_macroeconomic_outlook",
     "generate_investment_letter",
     "parse_portfolio",
-    "formatar_resumo_portfolio",
-    "sumarizar_portfolio",
-    "calcular_retorno_mensal_acoes",
-    "calcular_retorno_mensal_acoes_lista",
-    "calcular_retorno_mensal_fundos",
-    "calcular_retorno_mensal_renda_fixa",
-    "calcular_retorno_mensal_completo",
-    "PortfolioResumo",
-    "Acao",
-    "FundoInvestimento",
-    "TituloRendaFixa",
+    "format_portfolio_summary",
+    "summarize_portfolio",
+    "calculate_monthly_stock_returns",
+    "calculate_monthly_stock_returns_list",
+    "PortfolioSummary",
+    "Stock",
+    "InvestmentFund",
+    "FixedIncomeSecurity",
 ]
-
