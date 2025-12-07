@@ -739,19 +739,22 @@ def sumarizar_portfolio(arquivo_ou_texto: Union[str, Path]) -> PortfolioResumo:
 
 def calcular_retorno_mensal_acoes(
     portfolio_resumo: PortfolioResumo,
-    usar_ultimo_preco_portfolio: bool = True
+    usar_ultimo_preco_portfolio: bool = False
 ) -> PortfolioResumo:
     """
-    Calcula o retorno mensal de cada ação no portfólio usando yfinance.
+    Calcula o retorno mensal total de cada ação no portfólio usando yfinance.
     
-    O retorno é calculado usando Adj Close (ajustado para dividendos) comparando:
-    - Preço atual: último preço disponível no yfinance (ou do portfólio se especificado)
-    - Preço mês anterior: preço de 1 mês atrás do último preço disponível
+    O retorno é calculado usando preços ajustados (auto_adjust=True):
+    - Usa auto_adjust=True para obter preços já ajustados para dividendos e desdobramentos
+    - A coluna "Close" com auto_adjust=True contém os preços ajustados
+    - Compara o último preço disponível com o preço de 1 mês atrás
+    - O retorno total já inclui todos os ajustes (dividendos, desdobramentos, etc.)
     
     Args:
         portfolio_resumo: PortfolioResumo com as ações do cliente
-        usar_ultimo_preco_portfolio: Se True, usa o último preço do portfólio como referência.
-                                     Se False, usa o último preço disponível do yfinance.
+        usar_ultimo_preco_portfolio: Se True, atualiza o último preço do portfólio com o Adj Close.
+                                     Se False, mantém o preço original do portfólio.
+                                     O cálculo do retorno sempre usa Adj Close do yfinance.
         
     Returns:
         PortfolioResumo com os campos retorno_mensal e preco_mes_anterior preenchidos
@@ -773,29 +776,30 @@ def calcular_retorno_mensal_acoes(
             # Para ações brasileiras, adiciona sufixo .SA
             codigo_yfinance = f"{acao.codigo}.SA"
             
-            # Busca dados históricos (últimos 2 meses para garantir que temos dados)
+            # Busca dados históricos com auto_adjust=True para obter preços ajustados
+            # auto_adjust=True retorna preços já ajustados para dividendos e desdobramentos na coluna "Close"
             ticker = yf.Ticker(codigo_yfinance)
-            hist = ticker.history(period="3mo")  # 3 meses para garantir dados suficientes
+            hist = ticker.history(period="3mo", auto_adjust=True)
             
             if hist.empty:
                 print(f"Aviso: Não foi possível obter dados para {acao.codigo}")
                 continue
             
-            # Pega o último preço disponível (Adj Close)
-            ultimo_preco_adj = hist['Adj Close'].iloc[-1]  # Último preço ajustado
+            # Verifica se temos a coluna Close (que contém os preços ajustados quando auto_adjust=True)
+            if 'Close' not in hist.columns:
+                print(f"Aviso: Dados de preços não disponíveis para {acao.codigo}")
+                continue
             
-            # Determina o preço atual a usar
-            if usar_ultimo_preco_portfolio and acao.ultimo_preco:
-                preco_atual = acao.ultimo_preco
-            else:
-                preco_atual = ultimo_preco_adj
-            
-            # Calcula a data de 1 mês atrás
+            # Pega o último preço disponível (Close com auto_adjust=True já considera dividendos e desdobramentos)
             data_atual = hist.index[-1]
-            data_mes_anterior = data_atual - timedelta(days=30)
+            ultimo_preco_adj = hist['Close'].iloc[-1]
             
-            # Encontra o preço mais próximo de 1 mês atrás
-            # Procura na janela de 25 a 35 dias atrás para ter flexibilidade
+            # Atualiza o último preço do portfólio se solicitado
+            if usar_ultimo_preco_portfolio:
+                acao.ultimo_preco = ultimo_preco_adj
+            
+            # Calcula a data de 1 mês atrás (aproximadamente 30 dias)
+            # Procura na janela de 25 a 35 dias atrás para ter flexibilidade com dias não úteis
             data_inicio = data_atual - timedelta(days=35)
             data_fim = data_atual - timedelta(days=25)
             
@@ -807,17 +811,20 @@ def calcular_retorno_mensal_acoes(
                 # que seja pelo menos 20 dias atrás
                 dados_antigos = hist[hist.index <= (data_atual - timedelta(days=20))]
                 if not dados_antigos.empty:
-                    preco_mes_anterior_adj = dados_antigos['Adj Close'].iloc[-1]
+                    preco_mes_anterior_adj = dados_antigos['Close'].iloc[-1]
+                    data_mes_anterior = dados_antigos.index[-1]
                 else:
                     print(f"Aviso: Não foi possível encontrar preço de 1 mês atrás para {acao.codigo}")
                     continue
             else:
                 # Pega o preço mais próximo da data desejada (último da janela)
-                preco_mes_anterior_adj = dados_mes_anterior['Adj Close'].iloc[-1]
+                preco_mes_anterior_adj = dados_mes_anterior['Close'].iloc[-1]
+                data_mes_anterior = dados_mes_anterior.index[-1]
             
-            # Calcula o retorno mensal
+            # Calcula o retorno mensal total usando preços ajustados
+            # Com auto_adjust=True, a coluna Close já considera dividendos, desdobramentos, etc.
             # Retorno = (Preço Atual - Preço Mês Anterior) / Preço Mês Anterior * 100
-            retorno_mensal = ((preco_atual - preco_mes_anterior_adj) / preco_mes_anterior_adj) * 100
+            retorno_mensal = ((ultimo_preco_adj - preco_mes_anterior_adj) / preco_mes_anterior_adj) * 100
             
             # Atualiza os campos da ação
             acao.retorno_mensal = retorno_mensal
@@ -829,6 +836,8 @@ def calcular_retorno_mensal_acoes(
                 
         except Exception as e:
             print(f"Erro ao calcular retorno mensal para {acao.codigo}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             continue
     
     return portfolio_resumo
@@ -836,15 +845,21 @@ def calcular_retorno_mensal_acoes(
 
 def calcular_retorno_mensal_acoes_lista(
     acoes: List[Acao],
-    usar_ultimo_preco_portfolio: bool = True
+    usar_ultimo_preco_portfolio: bool = False
 ) -> List[Acao]:
     """
-    Calcula o retorno mensal de uma lista de ações usando yfinance.
+    Calcula o retorno mensal total de uma lista de ações usando yfinance.
+    
+    O retorno é calculado usando preços ajustados (auto_adjust=True):
+    - Usa auto_adjust=True para obter preços já ajustados para dividendos e desdobramentos
+    - A coluna "Close" com auto_adjust=True contém os preços ajustados
+    - Compara o último preço disponível com o preço de 1 mês atrás
     
     Args:
         acoes: Lista de objetos Acao
-        usar_ultimo_preco_portfolio: Se True, usa o último preço do portfólio como referência.
-                                     Se False, usa o último preço disponível do yfinance.
+        usar_ultimo_preco_portfolio: Se True, atualiza o último preço do portfólio com o preço ajustado.
+                                     Se False, mantém o preço original do portfólio.
+                                     O cálculo do retorno sempre usa preços ajustados do yfinance.
         
     Returns:
         Lista de ações com os campos retorno_mensal e preco_mes_anterior preenchidos
@@ -859,28 +874,30 @@ def calcular_retorno_mensal_acoes_lista(
             # Para ações brasileiras, adiciona sufixo .SA
             codigo_yfinance = f"{acao.codigo}.SA"
             
-            # Busca dados históricos (últimos 3 meses para garantir que temos dados)
+            # Busca dados históricos com auto_adjust=True para obter preços ajustados
+            # auto_adjust=True retorna preços já ajustados para dividendos e desdobramentos na coluna "Close"
             ticker = yf.Ticker(codigo_yfinance)
-            hist = ticker.history(period="3mo")
+            hist = ticker.history(period="3mo", auto_adjust=True)
             
             if hist.empty:
                 print(f"Aviso: Não foi possível obter dados para {acao.codigo}")
                 continue
             
-            # Pega o último preço disponível (Adj Close)
-            ultimo_preco_adj = hist['Adj Close'].iloc[-1]
+            # Verifica se temos a coluna Close (que contém os preços ajustados quando auto_adjust=True)
+            if 'Close' not in hist.columns:
+                print(f"Aviso: Dados de preços não disponíveis para {acao.codigo}")
+                continue
             
-            # Determina o preço atual a usar
-            if usar_ultimo_preco_portfolio and acao.ultimo_preco:
-                preco_atual = acao.ultimo_preco
-            else:
-                preco_atual = ultimo_preco_adj
-            
-            # Calcula a data de 1 mês atrás
+            # Pega o último preço disponível (Close com auto_adjust=True já considera dividendos e desdobramentos)
             data_atual = hist.index[-1]
+            ultimo_preco_adj = hist['Close'].iloc[-1]
             
-            # Encontra o preço mais próximo de 1 mês atrás
-            # Procura na janela de 25 a 35 dias atrás
+            # Atualiza o último preço do portfólio se solicitado
+            if usar_ultimo_preco_portfolio:
+                acao.ultimo_preco = ultimo_preco_adj
+            
+            # Calcula a data de 1 mês atrás (aproximadamente 30 dias)
+            # Procura na janela de 25 a 35 dias atrás para ter flexibilidade com dias não úteis
             data_inicio = data_atual - timedelta(days=35)
             data_fim = data_atual - timedelta(days=25)
             
@@ -889,17 +906,21 @@ def calcular_retorno_mensal_acoes_lista(
             
             if dados_mes_anterior.empty:
                 # Se não encontrar dados na janela, tenta pegar o mais antigo disponível
+                # que seja pelo menos 20 dias atrás
                 dados_antigos = hist[hist.index <= (data_atual - timedelta(days=20))]
                 if not dados_antigos.empty:
-                    preco_mes_anterior_adj = dados_antigos['Adj Close'].iloc[-1]
+                    preco_mes_anterior_adj = dados_antigos['Close'].iloc[-1]
+                    data_mes_anterior = dados_antigos.index[-1]
                 else:
                     print(f"Aviso: Não foi possível encontrar preço de 1 mês atrás para {acao.codigo}")
                     continue
             else:
-                preco_mes_anterior_adj = dados_mes_anterior['Adj Close'].iloc[-1]
+                preco_mes_anterior_adj = dados_mes_anterior['Close'].iloc[-1]
+                data_mes_anterior = dados_mes_anterior.index[-1]
             
-            # Calcula o retorno mensal
-            retorno_mensal = ((preco_atual - preco_mes_anterior_adj) / preco_mes_anterior_adj) * 100
+            # Calcula o retorno mensal total usando preços ajustados
+            # Com auto_adjust=True, a coluna Close já considera dividendos, desdobramentos, etc.
+            retorno_mensal = ((ultimo_preco_adj - preco_mes_anterior_adj) / preco_mes_anterior_adj) * 100
             
             # Atualiza os campos da ação
             acao.retorno_mensal = retorno_mensal
@@ -911,6 +932,8 @@ def calcular_retorno_mensal_acoes_lista(
                 
         except Exception as e:
             print(f"Erro ao calcular retorno mensal para {acao.codigo}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             continue
     
     return acoes
