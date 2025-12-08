@@ -775,6 +775,12 @@ def calculate_monthly_stock_returns(
         try:
             # For Brazilian stocks, add .SA suffix
             yfinance_code = f"{stock.code}.SA"
+
+            if yfinance_code.startswith("MRFG3"):
+                yfinance_code = "MBRF3.SA"
+            elif yfinance_code.startswith("ARZZ3"):
+                yfinance_code = "AZZA3.SA" 
+            
             
             # Fetch historical data with auto_adjust=True to get adjusted prices
             # auto_adjust=True returns prices already adjusted for dividends and splits in the "Close" column
@@ -873,6 +879,11 @@ def calculate_monthly_stock_returns_list(
         try:
             # For Brazilian stocks, add .SA suffix
             yfinance_code = f"{stock.code}.SA"
+
+            if yfinance_code.startswith("MRFG3"):
+                yfinance_code = "MBRF3.SA"
+            elif yfinance_code.startswith("ARZZ3"):
+                yfinance_code = "AZZA3.SA" 
             
             # Fetch historical data with auto_adjust=True to get adjusted prices
             # auto_adjust=True returns prices already adjusted for dividends and splits in the "Close" column
@@ -937,3 +948,40 @@ def calculate_monthly_stock_returns_list(
             continue
     
     return stocks
+
+
+def calculate_portfolio_monthly_return_simple(
+    stocks: List[Stock]
+) -> float:
+    """
+    Simplified version that returns just the weighted monthly return percentage.
+    
+    Args:
+        stocks: List of Stock objects with filled monthly_return and last_price fields
+    
+    Returns:
+        Weighted monthly return percentage for the portfolio
+    """
+    if not stocks:
+        return 0.0
+    
+    total_position_value = 0.0
+    weighted_return_sum = 0.0
+    
+    # First pass: calculate total portfolio value
+    for stock in stocks:
+        if stock.quantity > 0 and stock.last_price > 0:
+            position_value = stock.quantity * stock.last_price
+            total_position_value += position_value
+    
+    if total_position_value <= 0:
+        return 0.0
+    
+    # Second pass: calculate weighted returns
+    for stock in stocks:
+        if stock.quantity > 0 and stock.last_price > 0 and stock.monthly_return is not None:
+            position_value = stock.quantity * stock.last_price
+            weight = position_value / total_position_value
+            weighted_return_sum += stock.monthly_return * weight
+    
+    return weighted_return_sum
