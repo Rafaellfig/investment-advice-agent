@@ -18,6 +18,7 @@ from .portfolio_parser import (
     Stock,
     InvestmentFund,
     FixedIncomeSecurity,
+    InvestmentAdvisor,
 )
 
 __all__ = [
@@ -37,4 +38,5 @@ __all__ = [
     "Stock",
     "InvestmentFund",
     "FixedIncomeSecurity",
+    "InvestmentAdvisor",
 ]
