@@ -15,25 +15,27 @@ def get_portfolio_prompt(portfolio_data: str) -> str:
 
 ### Objective:
 
-You are a financial analyst creating a monthly investment report for a middle-market client. Below, you will receive detailed portfolio performance data, including asset allocation, returns (monthly, YTD, vs. benchmark), and any notable movements or rebalancing actions.
+You are a financial analyst creating a monthly investment report for a middle-market client.
 
-Your task is to write a concise, client-facing summary (1–2 paragraphs max) of the portfolio's performance, highlighting what matters most from an analytical and strategic point of view.
+Your task is to write a concise, client-facing summary (120–160 words) of the portfolio’s performance 
+based strictly on the information provided.
 
 ### What to include:
 
-- Overall portfolio return
-
-- Performance of key asset classes (e.g., equities, fixed income, alternatives)
+- Overall portfolio return and comparison vs. benchmark (if provided)
+- Performance of the main asset classes
+- Key drivers of performance (positive/negative)
+- Brief note on rebalancing or changes in allocation, if mentioned
 
 ### Style & Tone:
 
 - Professional, confident, and objective
-
 - Avoid overly technical language — prioritize clarity
 
-### Example Output:
-
-> The portfolio posted a 1.2% return in May, outperforming its benchmark by 0.4 percentage points. Equities were the primary driver of performance, with U.S. and European stocks benefiting from improved investor sentiment and solid earnings reports. On the other hand, Brazilian fixed income had a marginal negative contribution due to the flattening yield curve. No significant reallocations were made during the period, as we remain comfortable with the current positioning, particularly in global equities and inflation-linked bonds.
+### Important constraints (do NOT ignore)
+- Do NOT invent numbers, events, or insights not included in the input
+- Do NOT repeat the input verbatim; write a clean, narrative summary
+- Use only the data provided below
 
 ---
 
@@ -58,33 +60,28 @@ def get_risk_profile_prompt(risk_profile_data: str) -> str:
 
 ### Objective:
 
-You are a financial analyst preparing a monthly investment report for a middle-market client. Your goal is to summarize the client's investor profile in a clear, concise, and professional paragraph.
-
-The full profile includes answers to the risk tolerance questionnaire, age, income level, investment goals, liquidity needs, investment horizon, and previous investment experience.
+Write a single, well-structured paragraph (80–120 words) summarizing the client’s investor profile 
+based strictly on the information provided in the input.
 
 ### What to include:
 
 In a single paragraph, summarize the following:
 
-1. The client's risk profile (e.g., conservative, moderate, growth-oriented, aggressive)
-
-2. Their investment horizon (short-, medium-, or long-term)
-
-3. Their tolerance for volatility and potential losses
-
-4. Their primary investment objectives (e.g., wealth accumulation, income generation, retirement planning)
+- Risk profile classification (e.g., conservative, moderate, aggressive)
+- Investment horizon (short/medium/long term)
+- Tolerance for volatility and losses
+- Main investment objectives (e.g., income, accumulation, retirement)
 
 ### Style & Tone:
 
-- Professional and formal (like a private banking advisor)
-
-- Clear, technical, and investor-facing
-
+- Formal and private-banking-oriented
+- Clear, concise, technical but client-friendly
 - One paragraph only
 
-### Example Output:
-
-> The client has a moderate risk profile, with a long-term investment horizon and a balanced tolerance for short-term market volatility. The main objective is capital accumulation with an eye toward long-term financial independence and future retirement planning.
+### Important constraints
+- Do NOT add information not present in the input
+- Do NOT copy sentences verbatim; rephrase into a coherent summary
+- Do NOT contradict or reinterpret the client’s stated profile
 
 ---
 
@@ -109,33 +106,26 @@ def get_macro_outlook_prompt(macro_data: str) -> str:
 
 ### Objective:
 
-You are a financial analyst preparing a monthly investment report for a middle-market client. Your task is to analyze and summarize a set of macroeconomic insights — such as reports, articles, and analyst briefings — into a clear, concise paragraph in a professional tone.
-
-This summary will later be integrated into a client-facing investment letter, so it should highlight only the most relevant points from the perspective of an investor.
+You are preparing a macroeconomic commentary for a monthly investment report. 
+Write a clear and concise paragraph (120–160 words) summarizing the outlook strictly from the input provided.
 
 ### What to include:
 
-Summarize in a single, well-structured paragraph:
-
-- Key macroeconomic trends (e.g., inflation, interest rates, GDP, global risks)
-
-- Market sentiment (positive, cautious, volatile, etc.)
-
-- Relevant forecasts or analyst consensus
-
-- Any significant updates that could impact investment decisions
+- Key macroeconomic trends (inflation, interest rates, growth)
+- Market sentiment and investor positioning
+- Relevant analyst signals or risks
+- Points that matter for investment decisions
 
 ### Style & Tone:
 
-- Formal and analytical
+- Formal, analytical, and investor-facing
+- Jargon acceptable, but avoid unnecessary complexity
+- One well-structured paragraph
 
-- Jargon is acceptable, but avoid unnecessary complexity
-
-- Keep it investor-facing: prioritize what matters for portfolio decisions
-
-### Example Output:
-
-> In May, global markets reflected a cautiously optimistic sentiment amid signals of moderating inflation in the U.S. and stable interest rates in Europe. Brazil's Central Bank continued its rate-cutting cycle, while China's slower-than-expected recovery raised concerns across emerging markets. Overall, the macroeconomic backdrop suggests a supportive environment for risk assets, though geopolitical tensions and U.S. election dynamics remain key watchpoints.
+### Important constraints
+- Do NOT add projections, dates, numbers, or events that are not in the input
+- Do NOT repeat long phrases from the input; summarize and synthesize
+- Do NOT contradict the original commentary
 
 ---
 
@@ -166,43 +156,29 @@ def get_investment_letter_prompt(
 
 ### Objective:
 
-You are a financial analyst preparing a monthly investment letter to send to a middle-market client. You have already written three summaries:
-
-1. **Client Risk Profile Summary**
-
-2. **Macroeconomic Outlook Summary**
-
-3. **Portfolio Results Summary**
-
-Your task is now to integrate these three inputs into a single, well-structured investment letter, written in **Portuguese**, that will be sent directly to the client.
+Combine the three summaries below (risk profile, macro outlook, and portfolio performance) 
+into a polished investment letter of up to 400–500 words, written entirely in Portuguese.
 
 ### What to include:
 
-In up to two pages (approx. 500 words), write a polished investment letter that:
-
-- Opens with a short greeting and context ("Prezado João, segue o relatório mensal...")
-
-- Presents the **portfolio's performance**, allocation
-
-- Highlights the **macroeconomic outlook** and how it impacts portfolio positioning going forward
-
-- Make **recommendations** aligned with the client's risk profile
-
-- Closes with a professional sign-off and availability for follow-ups
+- Brief greeting and context (“Prezado... segue o relatório do mês...”)
+- Portfolio results and allocation overview
+- Connection to the macroeconomic scenario and its implications
+- Recommendations aligned with the client’s risk profile
+- Closing paragraph with professional sign-off
 
 ### Style & Tone:
 
 - Formal, polished, and client-facing
+- Flowing transitions between sections (“Nesse contexto...”, “Diante desse cenário...”)
+- No repetition of the same idea across sections
+- Voice of an experienced advisor: confident, clear, objective
 
-- Avoid repetition across sections
-
-- Use the voice of an experienced investment advisor: clear, confident, and tailored
-
-- Use transitions to connect sections smoothly (e.g., "Nesse contexto macroeconômico...", "Diante desse cenário, nosso portfólio...", "Seguimos atentos...")
-
-### Output format:
-
-The output should be in well-formatted **Portuguese**. Use paragraphs (not bullet points), keep it concise but insightful, and avoid technical overload.
+### Important constraints
+- Do NOT add data or insights not present in the three summaries
+- Do NOT repeat the summaries verbatim; rephrase into a coherent narrative
+- Do NOT contradict the inputs
+- Keep the structure in paragraphs; do NOT use bullet points
 
 ---
 
