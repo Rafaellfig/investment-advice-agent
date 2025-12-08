@@ -169,26 +169,7 @@ def parse_portfolio(portfolio_text: str) -> PortfolioSummary:
             if parts:
                 summary.client_name = parts[0].strip()
         
-        # Extract advisor information
-        if "código do assessor" in line.lower() and i + 1 < len(lines):
-            advisor_code = lines[i + 1].strip() if i + 1 < len(lines) else ""
-            advisor_name = ""
-            
-            # Look for "Nome do assessor" in the next few lines
-            j = i + 2
-            while j < len(lines) and j < i + 10:  # Search up to 10 lines ahead
-                if "nome do assessor" in lines[j].lower():
-                    if j + 1 < len(lines):
-                        advisor_name = lines[j + 1].strip()
-                    break
-                j += 1
-            
-            # Create advisor object if we have at least the code
-            if advisor_code:
-                summary.advisor = InvestmentAdvisor(
-                    name=advisor_name if advisor_name else "N/A",
-                    code=advisor_code
-                )
+
         
         # Collect all monetary values before "Ações" section
         # The order is: first value = total assets, second = total invested, last = available balance
@@ -574,6 +555,37 @@ def parse_portfolio(portfolio_text: str) -> PortfolioSummary:
             break
         i += 1
     
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if "código do assessor" in line.lower() and i + 1 < len(lines):
+            advisor_code = lines[i + 1].strip() if i + 1 < len(lines) else ""
+            advisor_name = ""
+            
+            # Look for "Nome do assessor" in the next few lines (search up to 15 lines ahead)
+            j = i + 2
+            while j < len(lines) and j < i + 15:
+                current_line = lines[j].strip().lower()
+
+                if "nome do assessor" in current_line:
+                    # Found "Nome do assessor", get the name from next non-empty line
+                    k = j + 1
+                    while k < len(lines) and k < j + 5:
+                        if lines[k].strip():
+                            advisor_name = lines[k].strip()
+                            break
+                        k += 1
+                    break
+                j += 1
+            
+            # Create advisor object if we have at least the code
+            if advisor_code:
+                summary.advisor = InvestmentAdvisor(
+                    name=advisor_name if advisor_name else "N/A",
+                    code=advisor_code
+                )
+        i += 1
+
     # Process additional fixed income information (rate, dates)
     i = 0
     while i < len(lines):
@@ -661,20 +673,18 @@ def format_portfolio_summary(summary: PortfolioSummary) -> str:
     
     # Basic information
     output.append(f"Client Name: {summary.client_name}")
+    
+    # Investment Advisor information (right after client name)
+    if summary.advisor:
+        output.append(f"Investment Advisor: {summary.advisor.name} ({summary.advisor.code})")
+        output.append(f"  Position: {summary.advisor.position}")
+        output.append(f"  Company: {summary.advisor.company_name}")
+    
     output.append(f"Total Assets: R$ {summary.total_assets:,.2f}")
     output.append(f"Total Invested: R$ {summary.total_invested:,.2f}")
     output.append(f"Available Balance: R$ {summary.available_balance:,.2f}")
     if summary.portfolio_monthly_return is not None:
         output.append(f"Portfolio Monthly Return: {summary.portfolio_monthly_return:.2f}%")
-    if summary.advisor:
-        output.append("")
-        output.append("-" * 80)
-        output.append("INVESTMENT ADVISOR")
-        output.append("-" * 80)
-        output.append(f"Name: {summary.advisor.name}")
-        output.append(f"Code: {summary.advisor.code}")
-        output.append(f"Position: {summary.advisor.position}")
-        output.append(f"Company: {summary.advisor.company_name}")
     output.append("")
     
     # Stocks
