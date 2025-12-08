@@ -67,6 +67,7 @@ class PortfolioSummary:
     stocks_percentage: float = 0.0
     funds_percentage: float = 0.0
     fixed_income_percentage: float = 0.0
+    portfolio_monthly_return: Optional[float] = None
 
 
 def extract_monetary_value(text: str) -> Optional[float]:
@@ -158,32 +159,38 @@ def parse_portfolio(portfolio_text: str) -> PortfolioSummary:
             if parts:
                 summary.client_name = parts[0].strip()
         
-        # Total invested
-        if line.lower() == "total investido":
-            # Look for value in next lines (skip empty lines)
+        # Collect all monetary values before "Ações" section
+        # The order is: first value = total assets, second = total invested, last = available balance
+        # Only process once when we first encounter "Total investido" or "Saldo Disponível"
+        if line.lower() in ["total investido", "saldo disponível"] and summary.total_assets == 0.0:
+            # Collect all R$ values between here and "Ações"
             j = i + 1
-            while j < len(lines) and not lines[j].startswith("R$"):
-                j += 1
-            if j < len(lines):
-                value = extract_monetary_value(lines[j])
-                if value:
-                    summary.total_invested = value
-        
-        # Available balance
-        if line.lower() == "saldo disponível":
-            # Look for value in next lines (skip empty lines)
-            # There might be an intermediate value, so look for the last R$ before "Ações"
-            j = i + 1
-            last_value = None
+            monetary_values = []
             while j < len(lines) and lines[j] != "Ações":
                 if lines[j].startswith("R$"):
-                    last_value = extract_monetary_value(lines[j])
+                    value = extract_monetary_value(lines[j])
+                    if value:
+                        monetary_values.append(value)
                 j += 1
-            if last_value:
-                summary.available_balance = last_value
-        
-        # Total assets = Total invested + Available balance
-        summary.total_assets = summary.total_invested + summary.available_balance
+            
+            # Assign values based on order:
+            # First value = total assets
+            # Second value = total invested
+            # Last value = available balance
+            if len(monetary_values) >= 3:
+                summary.total_assets = monetary_values[0]
+                summary.total_invested = monetary_values[1]
+                summary.available_balance = monetary_values[-1]
+            elif len(monetary_values) == 2:
+                # If only 2 values, assume first is total assets, second is total invested
+                summary.total_assets = monetary_values[0]
+                summary.total_invested = monetary_values[1]
+                summary.available_balance = 0.0
+            elif len(monetary_values) == 1:
+                # If only 1 value, it's the total assets
+                summary.total_assets = monetary_values[0]
+                summary.total_invested = 0.0
+                summary.available_balance = 0.0
         
         # Stocks section
         if line == "Ações" and i + 1 < len(lines):
@@ -626,6 +633,8 @@ def format_portfolio_summary(summary: PortfolioSummary) -> str:
     output.append(f"Total Assets: R$ {summary.total_assets:,.2f}")
     output.append(f"Total Invested: R$ {summary.total_invested:,.2f}")
     output.append(f"Available Balance: R$ {summary.available_balance:,.2f}")
+    if summary.portfolio_monthly_return is not None:
+        output.append(f"Portfolio Monthly Return: {summary.portfolio_monthly_return:.2f}%")
     output.append("")
     
     # Stocks
@@ -734,7 +743,16 @@ def summarize_portfolio(file_or_text: Union[str, Path]) -> PortfolioSummary:
         # Assume it's text
         text = str(file_or_text)
     
-    return parse_portfolio(text)
+    summary = parse_portfolio(text)
+    
+    # Calculate portfolio monthly return if stocks have monthly_return calculated
+    if summary.stocks:
+        # Check if at least one stock has monthly_return calculated
+        has_monthly_returns = any(stock.monthly_return is not None for stock in summary.stocks)
+        if has_monthly_returns:
+            summary.portfolio_monthly_return = calculate_portfolio_monthly_return_simple(summary.stocks)
+    
+    return summary
 
 
 def calculate_monthly_stock_returns(
@@ -818,14 +836,12 @@ def calculate_monthly_stock_returns(
                 old_data = hist[hist.index <= (current_date - timedelta(days=20))]
                 if not old_data.empty:
                     previous_month_price_adj = old_data['Close'].iloc[-1]
-                    previous_month_date = old_data.index[-1]
                 else:
                     print(f"Warning: Could not find price from 1 month ago for {stock.code}")
                     continue
             else:
                 # Get price closest to desired date (last in window)
                 previous_month_price_adj = previous_month_data['Close'].iloc[-1]
-                previous_month_date = previous_month_data.index[-1]
             
             # Calculate total monthly return using adjusted prices
             # With auto_adjust=True, the Close column already considers dividends, splits, etc.
@@ -921,13 +937,11 @@ def calculate_monthly_stock_returns_list(
                 old_data = hist[hist.index <= (current_date - timedelta(days=20))]
                 if not old_data.empty:
                     previous_month_price_adj = old_data['Close'].iloc[-1]
-                    previous_month_date = old_data.index[-1]
                 else:
                     print(f"Warning: Could not find price from 1 month ago for {stock.code}")
                     continue
             else:
                 previous_month_price_adj = previous_month_data['Close'].iloc[-1]
-                previous_month_date = previous_month_data.index[-1]
             
             # Calculate total monthly return using adjusted prices
             # With auto_adjust=True, the Close column already considers dividends, splits, etc.
