@@ -55,6 +55,15 @@ class FixedIncomeSecurity:
 
 
 @dataclass
+class InvestmentAdvisor:
+    """Represents the investment advisor information."""
+    name: str
+    code: str
+    position: str = "Assessor de Investimentos"
+    company_name: str = "XP"
+
+
+@dataclass
 class PortfolioSummary:
     """Structured summary of the client's portfolio."""
     client_name: str
@@ -68,6 +77,7 @@ class PortfolioSummary:
     funds_percentage: float = 0.0
     fixed_income_percentage: float = 0.0
     portfolio_monthly_return: Optional[float] = None
+    advisor: Optional[InvestmentAdvisor] = None
 
 
 def extract_monetary_value(text: str) -> Optional[float]:
@@ -158,6 +168,27 @@ def parse_portfolio(portfolio_text: str) -> PortfolioSummary:
             parts = line.split(",")
             if parts:
                 summary.client_name = parts[0].strip()
+        
+        # Extract advisor information
+        if "código do assessor" in line.lower() and i + 1 < len(lines):
+            advisor_code = lines[i + 1].strip() if i + 1 < len(lines) else ""
+            advisor_name = ""
+            
+            # Look for "Nome do assessor" in the next few lines
+            j = i + 2
+            while j < len(lines) and j < i + 10:  # Search up to 10 lines ahead
+                if "nome do assessor" in lines[j].lower():
+                    if j + 1 < len(lines):
+                        advisor_name = lines[j + 1].strip()
+                    break
+                j += 1
+            
+            # Create advisor object if we have at least the code
+            if advisor_code:
+                summary.advisor = InvestmentAdvisor(
+                    name=advisor_name if advisor_name else "N/A",
+                    code=advisor_code
+                )
         
         # Collect all monetary values before "Ações" section
         # The order is: first value = total assets, second = total invested, last = available balance
@@ -635,6 +666,15 @@ def format_portfolio_summary(summary: PortfolioSummary) -> str:
     output.append(f"Available Balance: R$ {summary.available_balance:,.2f}")
     if summary.portfolio_monthly_return is not None:
         output.append(f"Portfolio Monthly Return: {summary.portfolio_monthly_return:.2f}%")
+    if summary.advisor:
+        output.append("")
+        output.append("-" * 80)
+        output.append("INVESTMENT ADVISOR")
+        output.append("-" * 80)
+        output.append(f"Name: {summary.advisor.name}")
+        output.append(f"Code: {summary.advisor.code}")
+        output.append(f"Position: {summary.advisor.position}")
+        output.append(f"Company: {summary.advisor.company_name}")
     output.append("")
     
     # Stocks
