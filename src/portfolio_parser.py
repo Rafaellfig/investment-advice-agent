@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 from dataclasses import dataclass, field
+import numpy as np
+import matplotlib.pyplot as plt
 
 try:
     import yfinance as yf
@@ -1049,3 +1051,88 @@ def calculate_portfolio_monthly_return_simple(
             weighted_return_sum += stock.monthly_return * weight
     
     return weighted_return_sum
+
+
+def plot_allocation_donut(stocks_pct, funds_pct, fixed_income_pct,
+                         labels=None,
+                         colors=None,
+                         title="Alocação Macro",
+                         figsize=(6,6),
+                         savepath=None):
+    """
+    Cria um gráfico de rosca (donut) com três parcelas: ações, fundos e renda fixa.
+    """
+
+    # Aceita tanto números quanto listas/arrays com um único valor
+    def _to_number(x):
+        if hasattr(x, "__len__") and not isinstance(x, (str, bytes)):
+            return float(np.asarray(x).ravel()[0])
+        return float(x)
+
+    s = _to_number(stocks_pct)
+    f = _to_number(funds_pct)
+    r = _to_number(fixed_income_pct)
+
+    vals = np.array([s, f, r], dtype=float)
+    total = vals.sum()
+    if total == 0:
+        raise ValueError("A soma das porcentagens é zero. Forneça valores válidos.")
+
+    # Converte fração → porcentagem, se necessário
+    if vals.max() <= 1.0:
+        vals = vals * 100.0
+
+    if labels is None:
+        labels = ["Ações", "Fundos", "Renda Fixa"]
+
+    # Mantém sempre as mesmas cores por classe
+    if colors is None:
+        colors = ["#1f77b4", "#ff7f0e", "#2ca02c"]  # Azul, Laranja, Verde
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    wedges, _ = ax.pie(
+        vals,
+        startangle=90,
+        labels=None,
+        colors=colors,
+        wedgeprops=dict(width=0.35, edgecolor="white"),
+        counterclock=False,
+    )
+
+    # Anotações externas com linhas
+    kw = dict(
+        arrowprops=dict(arrowstyle="-"),
+        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="none", alpha=0.9),
+        zorder=0, va="center"
+    )
+
+    for i, p in enumerate(wedges):
+        ang = (p.theta2 - p.theta1) / 2 + p.theta1
+        x = np.cos(np.deg2rad(ang))
+        y = np.sin(np.deg2rad(ang))
+        ha = "left" if x > 0 else "right"
+        ax.annotate(
+            f"{labels[i]}: {vals[i]:.1f}%",
+            xy=(x * 0.7, y * 0.7),
+            xytext=(x * 1.1, y * 1.1),
+            horizontalalignment=ha,
+            **kw,
+        )
+
+    # Texto central opcional
+    ax.text(0, -0.05, f"Total\n{total:.1f}%", ha="center", va="center",
+            fontsize=10, weight="bold")
+
+    ax.set_title(title, fontsize=14, weight="semibold")
+    ax.legend(wedges, labels, title="Classe",
+              loc="center left", bbox_to_anchor=(1.05, 0.5))
+
+    ax.set_aspect("equal")
+    plt.tight_layout()
+
+    if savepath:
+        plt.savefig(savepath, dpi=300, bbox_inches="tight")
+
+    plt.show()
+    return fig, ax
