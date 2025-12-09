@@ -1056,46 +1056,46 @@ def calculate_portfolio_monthly_return_simple(
 
 def smart_label(label: str, angle_span: float, base_chars: int = 15) -> str:
     """
-    Gera um nome curto, inteligente e proporcional ao espaço disponível.
+    Generates a short, smart, and space-proportional label.
 
-    Estratégias:
-    - Mantém tickers (ex: PETR4, VALE3, ITUB4)
-    - Reduz nomes longos de fundos e títulos
-    - Ajusta o número máximo de caracteres conforme o ângulo da fatia
-    - Trunca somente se necessário
+    Strategies:
+    - Keeps tickers unchanged (e.g., PETR4, VALE3, ITUB4)
+    - Shortens long fund and bond names
+    - Adjusts the maximum number of characters based on the slice angle
+    - Truncates only when necessary
     """
     original = str(label).strip()
 
-    # 1. Ticker detectado → não truncar
+    # 1. Ticker detected → do not truncate
     if re.match(r"^[A-Za-z]{3,5}\d{1,2}$", original):
         return original
 
-    # 2. Limpeza de termos irrelevantes
+    # 2. Remove irrelevant terms
     stopwords = {
         "fundo", "de", "fic", "fii", "fia", "rf", "lp", "curto", "prazo",
-        "fiam", "mm", "multimercado", "renda", "fixa","banco",
+        "fiam", "mm", "multimercado", "renda", "fixa", "banco",
     }
 
     tokens = [t for t in re.split(r"\s+", original) if t.lower() not in stopwords]
 
-    # reduz anos (2027 → 27)
+    # reduce years (2027 → 27)
     tokens = [re.sub(r"20(\d\d)", r"\1", t) for t in tokens]
 
     if not tokens:
         tokens = original.split()
 
-    # alias reduzido a 2 palavras
+    # reduced alias to 2 words
     alias = " ".join(tokens[:2])
 
-    # escolher o menor entre alias e original
+    # choose the shortest between alias and original
     candidate = alias if len(alias) < len(original) else original
 
-    # 3. limite proporcional ao espaço da fatia
+    # 3. character limit proportional to the slice space
     scale = angle_span / 30
     max_chars = int(base_chars * scale)
     max_chars = max(4, min(max_chars, base_chars))
 
-    # 4. truncamento final
+    # 4. final truncation
     if len(candidate) <= max_chars:
         return candidate
 
@@ -1111,7 +1111,7 @@ def plot_portfolio_donut_with_inner_ring(
 ):
 
     # =============================
-    # 1. Dados principais
+    # 1. Data for main classes
     # =============================
     class_labels = ["Ações", "Fundos", "Renda Fixa"]
     raw_values = [
@@ -1139,7 +1139,7 @@ def plot_portfolio_donut_with_inner_ring(
     outer_colors = [class_colors[c] for c in class_labels]
 
     # =============================
-    # 2. Subfatias por classe
+    # 2. Sub-slices by class
     # =============================
     def normalize_assets(items, class_pct):
         assets = []
@@ -1162,13 +1162,13 @@ def plot_portfolio_donut_with_inner_ring(
     inner_assets_list = [stocks, funds, fixed_income]
 
     # =============================
-    # 3. Criar figura
+    # 3. Create figure
     # =============================
     fig, ax = plt.subplots(figsize=(11, 11))
     ax.set_aspect("equal")
 
     # =============================
-    # 4. Aro principal
+    # 4. Principal Ring
     # =============================
     wedges, _ = ax.pie(
         class_values,
@@ -1180,7 +1180,7 @@ def plot_portfolio_donut_with_inner_ring(
         labeldistance=None
     )
 
-    # rótulos externos
+
     for w, label, pct in zip(wedges, class_labels, class_pct_labels):
         ang = np.deg2rad((w.theta1 + w.theta2) / 2)
         x = 1.18 * np.cos(ang)
@@ -1196,7 +1196,7 @@ def plot_portfolio_donut_with_inner_ring(
         )
 
     # =============================
-    # 5. Anel interno + rótulos inteligentes
+    # 5. Inner ring + smart labels
     # =============================
     for wedge, assets, class_name in zip(wedges, inner_assets_list, class_labels):
 
@@ -1248,7 +1248,7 @@ def plot_portfolio_donut_with_inner_ring(
                 )
 
     # =============================
-    # 6. Valor no centro
+    # 6. Center Value
     # =============================
     invested_text = f"Total Investido\nR$ {summary.total_invested:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
@@ -1263,8 +1263,8 @@ def plot_portfolio_donut_with_inner_ring(
     )
 
     # =============================
-    # 7. Título
+    # 7. Title
     # =============================
     plt.title(title, fontsize=20, fontweight="bold", pad=20)
 
-    plt.show()
+    return fig
