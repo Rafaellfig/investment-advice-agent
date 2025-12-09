@@ -1,6 +1,6 @@
 """Service and utility modules."""
 
-from .file_utils import read_file, write_file
+from .file_utils import read_file, write_file, create_letter
 from .ai_service import (
     call_openai,
     summarize_portfolio_results,
@@ -14,6 +14,8 @@ from .portfolio_parser import (
     summarize_portfolio,
     calculate_monthly_stock_returns,
     calculate_monthly_stock_returns_list,
+    calculate_portfolio_monthly_return_simple,
+    plot_portfolio_donut_with_inner_ring,
     PortfolioSummary,
     Stock,
     InvestmentFund,
@@ -24,6 +26,7 @@ from .portfolio_parser import (
 __all__ = [
     "read_file",
     "write_file",
+    "create_letter",
     "call_openai",
     "summarize_portfolio_results",
     "summarize_risk_profile",
@@ -34,6 +37,9 @@ __all__ = [
     "summarize_portfolio",
     "calculate_monthly_stock_returns",
     "calculate_monthly_stock_returns_list",
+    "calculate_portfolio_monthly_return_simple",
+    "plot_portfolio_donut_with_inner_ring",
+    "create_letter",
     "PortfolioSummary",
     "Stock",
     "InvestmentFund",
