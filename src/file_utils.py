@@ -8,6 +8,9 @@ from docx.shared import Pt, Inches, Mm
 from docx.oxml.ns import qn
 from datetime import datetime
 import locale
+import io
+import os
+import re
 locale.setlocale(locale.LC_TIME, "pt_BR.UTF-8")
 
 
@@ -62,6 +65,32 @@ def set_document_margins(section, top_mm=25, bottom_mm=25, left_mm=25, right_mm=
     section.left_margin = Mm(left_mm)
     section.right_margin = Mm(right_mm)
 
+
+def add_paragraph_with_bold(paragraph, text):
+    """
+    Adds text to a paragraph, processing **text** as bold formatting.
+    
+    Args:
+        paragraph: The docx paragraph object to add text to.
+        text: The text string that may contain **bold** markers.
+    """
+    # Pattern to match **text**
+    pattern = r'\*\*(.*?)\*\*'
+    
+    # Split text by bold markers
+    parts = re.split(pattern, text)
+    
+    for i, part in enumerate(parts):
+        if not part:
+            continue
+        # Odd indices are the bold text (captured groups)
+        if i % 2 == 1:
+            run = paragraph.add_run(part)
+            run.bold = True
+        else:
+            # Even indices are regular text
+            paragraph.add_run(part)
+
 def create_letter(
     output_file,
     image_path,
@@ -74,6 +103,7 @@ def create_letter(
     closing_line,
     signature_name,
     signature_title,
+    chart_figure=None,
     top_mm=25,
     bottom_mm=25,
     left_mm=22,
@@ -94,6 +124,7 @@ def create_letter(
         closing_line (str): Closing sentence before the signature.
         signature_name (str): Name to appear in the signature.
         signature_title (str): Title below signature.
+        chart_figure (matplotlib.figure.Figure, optional): Matplotlib figure to insert in the document.
         top_mm, bottom_mm, left_mm, right_mm (int): Margin sizes.
     """
     doc = Document()
@@ -144,8 +175,6 @@ def create_letter(
     data_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
     data_paragraph.add_run(f"{city}, {datetime.now().strftime('%d de %B de %Y')}")
 
-    doc.add_paragraph()
-
     # --- Recipient ---
     dest = doc.add_paragraph()
     dest.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
@@ -160,16 +189,59 @@ def create_letter(
     run.bold = True
     run.font.size = Pt(11)
 
-    doc.add_paragraph()
-
     # --- Letter body ---
-    for para in body_paragraphs:
-        p = doc.add_paragraph(para)
+    chart_inserted = False
+    for i, para in enumerate(body_paragraphs):
+        p = doc.add_paragraph()
         p.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+        
+        # Add text with bold formatting for **text**
+        add_paragraph_with_bold(p, para)
 
         p_format = p.paragraph_format
         p_format.space_after = Pt(8)
         p_format.line_spacing = 1.15
+        
+        # Insert chart after the first or second paragraph (where allocation is mentioned)
+        # Look for keywords that suggest portfolio allocation discussion
+        if not chart_inserted and chart_figure is not None:
+            # Check if this paragraph mentions allocation, distribution, or portfolio composition
+            lower_para = para.lower()
+            allocation_keywords = ['alocação', 'distribuição', 'composto por', 'portfólio', 'ações', 'fundos', 'renda fixa']
+            if any(keyword in lower_para for keyword in allocation_keywords) and i >= 0:
+                # Insert chart after this paragraph
+                doc.add_paragraph()  # Add spacing
+                
+                # Save chart to temporary buffer
+                chart_buffer = io.BytesIO()
+                chart_figure.savefig(chart_buffer, format='png', dpi=150, bbox_inches='tight')
+                chart_buffer.seek(0)
+                
+                # Insert chart centered
+                chart_para = doc.add_paragraph()
+                chart_para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                run = chart_para.add_run()
+                run.add_picture(chart_buffer, width=Inches(3.5))
+                
+                doc.add_paragraph()  # Add spacing after chart
+                chart_inserted = True
+
+    # If chart wasn't inserted yet, insert it after all paragraphs
+    if not chart_inserted and chart_figure is not None:
+        doc.add_paragraph()  # Add spacing
+        
+        # Save chart to temporary buffer
+        chart_buffer = io.BytesIO()
+        chart_figure.savefig(chart_buffer, format='png', dpi=150, bbox_inches='tight')
+        chart_buffer.seek(0)
+        
+        # Insert chart centered
+        chart_para = doc.add_paragraph()
+        chart_para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+        run = chart_para.add_run()
+        run.add_picture(chart_buffer, width=Inches(3.5))
+        
+        doc.add_paragraph()  # Add spacing after chart
 
     doc.add_paragraph() 
 
@@ -178,8 +250,6 @@ def create_letter(
     closing.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
     closing.add_run(closing_line).bold = False
 
-    doc.add_paragraph() 
-    doc.add_paragraph() 
 
     sign = doc.add_paragraph()
     sign.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
@@ -204,5 +274,9 @@ def create_letter(
         f_para.runs[0].font.size = Pt(9)
 
     # --- Save the document ---
-    doc.save(output_file)
+    # Ensure output directory exists
+    output_path = Path(output_file)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    doc.save(str(output_file))
     print(f"Documento salvo em: {output_file}")
