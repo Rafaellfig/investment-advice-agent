@@ -7,6 +7,8 @@ from typing import Dict, List, Optional, Union
 from dataclasses import dataclass, field
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Wedge
+import re
 
 try:
     import yfinance as yf
@@ -1052,87 +1054,217 @@ def calculate_portfolio_monthly_return_simple(
     
     return weighted_return_sum
 
-
-def plot_allocation_donut(stocks_pct, funds_pct, fixed_income_pct,
-                         labels=None,
-                         colors=None,
-                         title="Alocação Macro",
-                         figsize=(6,6),
-                         savepath=None):
+def smart_label(label: str, angle_span: float, base_chars: int = 15) -> str:
     """
-    Cria um gráfico de rosca (donut) com três parcelas: ações, fundos e renda fixa.
+    Gera um nome curto, inteligente e proporcional ao espaço disponível.
+
+    Estratégias:
+    - Mantém tickers (ex: PETR4, VALE3, ITUB4)
+    - Reduz nomes longos de fundos e títulos
+    - Ajusta o número máximo de caracteres conforme o ângulo da fatia
+    - Trunca somente se necessário
     """
+    original = str(label).strip()
 
-    # Aceita tanto números quanto listas/arrays com um único valor
-    def _to_number(x):
-        if hasattr(x, "__len__") and not isinstance(x, (str, bytes)):
-            return float(np.asarray(x).ravel()[0])
-        return float(x)
+    # 1. Ticker detectado → não truncar
+    if re.match(r"^[A-Za-z]{3,5}\d{1,2}$", original):
+        return original
 
-    s = _to_number(stocks_pct)
-    f = _to_number(funds_pct)
-    r = _to_number(fixed_income_pct)
+    # 2. Limpeza de termos irrelevantes
+    stopwords = {
+        "fundo", "de", "fic", "fii", "fia", "rf", "lp", "curto", "prazo",
+        "fiam", "mm", "multimercado", "renda", "fixa","banco",
+    }
 
-    vals = np.array([s, f, r], dtype=float)
-    total = vals.sum()
-    if total == 0:
-        raise ValueError("A soma das porcentagens é zero. Forneça valores válidos.")
+    tokens = [t for t in re.split(r"\s+", original) if t.lower() not in stopwords]
 
-    # Converte fração → porcentagem, se necessário
-    if vals.max() <= 1.0:
-        vals = vals * 100.0
+    # reduz anos (2027 → 27)
+    tokens = [re.sub(r"20(\d\d)", r"\1", t) for t in tokens]
 
-    if labels is None:
-        labels = ["Ações", "Fundos", "Renda Fixa"]
+    if not tokens:
+        tokens = original.split()
 
-    # Mantém sempre as mesmas cores por classe
-    if colors is None:
-        colors = ["#1f77b4", "#ff7f0e", "#2ca02c"]  # Azul, Laranja, Verde
+    # alias reduzido a 2 palavras
+    alias = " ".join(tokens[:2])
 
-    fig, ax = plt.subplots(figsize=figsize)
+    # escolher o menor entre alias e original
+    candidate = alias if len(alias) < len(original) else original
 
+    # 3. limite proporcional ao espaço da fatia
+    scale = angle_span / 30
+    max_chars = int(base_chars * scale)
+    max_chars = max(4, min(max_chars, base_chars))
+
+    # 4. truncamento final
+    if len(candidate) <= max_chars:
+        return candidate
+
+    return candidate[:max_chars] + "..."
+
+
+def plot_portfolio_donut_with_inner_ring(
+    summary: PortfolioSummary,
+    min_asset_pct_within_class=0.05,
+    min_label_angle_deg=8,
+    title="Distribuição do Portfólio",
+    max_label_chars=15
+):
+
+    # =============================
+    # 1. Dados principais
+    # =============================
+    class_labels = ["Ações", "Fundos", "Renda Fixa"]
+    raw_values = [
+        summary.stocks_percentage,
+        summary.funds_percentage,
+        summary.fixed_income_percentage,
+    ]
+
+    class_values = []
+    class_pct_labels = []
+
+    for v in raw_values:
+        if v <= 1: pct = v * 100
+        else: pct = v
+
+        class_values.append(v)
+        class_pct_labels.append(f"{pct:.1f}%")
+
+    class_colors = {
+        "Ações": "#2E86C1",
+        "Fundos": "#AF7AC5",
+        "Renda Fixa": "#F5B041",
+    }
+
+    outer_colors = [class_colors[c] for c in class_labels]
+
+    # =============================
+    # 2. Subfatias por classe
+    # =============================
+    def normalize_assets(items, class_pct):
+        assets = []
+        for item in items:
+            pct = item.allocation_percentage / class_pct if class_pct > 0 else 0
+            if pct >= min_asset_pct_within_class:
+                name = getattr(item, "code", getattr(item, "name", "Ativo"))
+                assets.append((name, pct))
+
+        if not assets:
+            return []
+
+        total = sum(v for _, v in assets)
+        return [(name, v / total) for name, v in assets]
+
+    stocks = normalize_assets(summary.stocks, summary.stocks_percentage)
+    funds = normalize_assets(summary.funds, summary.funds_percentage)
+    fixed_income = normalize_assets(summary.fixed_income_securities, summary.fixed_income_percentage)
+
+    inner_assets_list = [stocks, funds, fixed_income]
+
+    # =============================
+    # 3. Criar figura
+    # =============================
+    fig, ax = plt.subplots(figsize=(11, 11))
+    ax.set_aspect("equal")
+
+    # =============================
+    # 4. Aro principal
+    # =============================
     wedges, _ = ax.pie(
-        vals,
-        startangle=90,
+        class_values,
         labels=None,
-        colors=colors,
-        wedgeprops=dict(width=0.35, edgecolor="white"),
-        counterclock=False,
+        colors=outer_colors,
+        radius=1.0,
+        wedgeprops=dict(width=0.30, edgecolor="white"),
+        startangle=90,
+        labeldistance=None
     )
 
-    # Anotações externas com linhas
-    kw = dict(
-        arrowprops=dict(arrowstyle="-"),
-        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="none", alpha=0.9),
-        zorder=0, va="center"
-    )
+    # rótulos externos
+    for w, label, pct in zip(wedges, class_labels, class_pct_labels):
+        ang = np.deg2rad((w.theta1 + w.theta2) / 2)
+        x = 1.18 * np.cos(ang)
+        y = 1.18 * np.sin(ang)
 
-    for i, p in enumerate(wedges):
-        ang = (p.theta2 - p.theta1) / 2 + p.theta1
-        x = np.cos(np.deg2rad(ang))
-        y = np.sin(np.deg2rad(ang))
-        ha = "left" if x > 0 else "right"
-        ax.annotate(
-            f"{labels[i]}: {vals[i]:.1f}%",
-            xy=(x * 0.7, y * 0.7),
-            xytext=(x * 1.1, y * 1.1),
-            horizontalalignment=ha,
-            **kw,
+        ax.text(
+            x, y,
+            f"{label}\n{pct}",
+            ha="center", va="center",
+            fontsize=13,
+            fontweight="bold",
+            color="#222"
         )
 
-    # Texto central opcional
-    ax.text(0, -0.05, f"Total\n{total:.1f}%", ha="center", va="center",
-            fontsize=10, weight="bold")
+    # =============================
+    # 5. Anel interno + rótulos inteligentes
+    # =============================
+    for wedge, assets, class_name in zip(wedges, inner_assets_list, class_labels):
 
-    ax.set_title(title, fontsize=14, weight="semibold")
-    ax.legend(wedges, labels, title="Classe",
-              loc="center left", bbox_to_anchor=(1.05, 0.5))
+        if len(assets) == 0:
+            continue
 
-    ax.set_aspect("equal")
-    plt.tight_layout()
+        theta1, theta2 = wedge.theta1, wedge.theta2
+        total_angle = theta2 - theta1
 
-    if savepath:
-        plt.savefig(savepath, dpi=300, bbox_inches="tight")
+        cumulative = np.cumsum([pct for _, pct in assets])
+        inner_angles = [theta1] + list(theta1 + cumulative * total_angle)
+
+        for (asset_label, pct), a1, a2 in zip(assets, inner_angles[:-1], inner_angles[1:]):
+            angle_span = a2 - a1
+
+            inner_wedge = Wedge(
+                center=(0, 0),
+                r=0.70,
+                width=0.18,
+                theta1=a1,
+                theta2=a2,
+                facecolor=class_colors[class_name],
+                edgecolor="white",
+                linewidth=0.8,
+                alpha=0.55,
+            )
+            ax.add_patch(inner_wedge)
+
+            if angle_span >= min_label_angle_deg:
+                mid_angle = np.deg2rad((a1 + a2) / 2)
+                text_r = 0.61
+
+                label_final = smart_label(
+                    asset_label,
+                    angle_span,
+                    base_chars=max_label_chars
+                )
+
+                ax.text(
+                    text_r * np.cos(mid_angle),
+                    text_r * np.sin(mid_angle),
+                    label_final,
+                    ha="center",
+                    va="center",
+                    fontsize=9,
+                    color="#222",
+                    fontweight="bold",
+                    wrap=True
+                )
+
+    # =============================
+    # 6. Valor no centro
+    # =============================
+    invested_text = f"Total Investido\nR$ {summary.total_invested:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    ax.text(
+        0, 0,
+        invested_text,
+        ha="center",
+        va="center",
+        fontsize=15,
+        fontweight="bold",
+        color="#333"
+    )
+
+    # =============================
+    # 7. Título
+    # =============================
+    plt.title(title, fontsize=20, fontweight="bold", pad=20)
 
     plt.show()
-    return fig, ax
