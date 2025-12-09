@@ -2,138 +2,83 @@
 
 
 def get_portfolio_prompt(portfolio_data: str) -> str:
-    """
-    Returns the prompt for portfolio results summary.
-    
-    Args:
-        portfolio_data: Portfolio data
-        
-    Returns:
-        Formatted prompt
-    """
-    return """## Prompt: Summarize the Client's Portfolio Results
+    return """
+You are a financial analyst preparing a monthly performance summary for a mid-market client.
 
-### Objective:
+Write a concise, client-facing summary of 120–160 words describing the portfolio's performance 
+strictly based on the input provided.
 
-You are a financial analyst creating a monthly investment report for a middle-market client.
+Include:
+- Overall portfolio result and comparison with benchmark (if included in the input)
+- Contribution of each asset class and key performance drivers
+- Any rebalancing or allocation changes explicitly mentioned
+- A brief explanation of the practical implications for the client
 
-Your task is to write a concise, client-facing summary (120–160 words) of the portfolio’s performance 
-based strictly on the information provided.
+Style:
+- Professional, clear, and objective
+- Avoid jargon unless it appears in the input
+- Do not repeat sentences or copy input text; synthesize into a clean narrative
 
-### What to include:
+Hard constraints:
+- Do not add numbers, insights, or assumptions not present in the input
+- Do not speculate
+- Do not omit any essential performance elements present in the input
 
-- Overall portfolio return and comparison vs. benchmark (if provided)
-- Performance of the main asset classes
-- Key drivers of performance (positive/negative)
-- Brief note on rebalancing or changes in allocation, if mentioned
-
-### Style & Tone:
-
-- Professional, confident, and objective
-- Avoid overly technical language — prioritize clarity
-
-### Important constraints (do NOT ignore)
-- Do NOT invent numbers, events, or insights not included in the input
-- Do NOT repeat the input verbatim; write a clean, narrative summary
-- Use only the data provided below
-
----
-
-### Input:
-
-Below is the portfolio data and performance commentary:
-
-{portfolio_results}""".format(portfolio_results=portfolio_data)
+Input data:
+{portfolio_results}
+""".format(portfolio_results=portfolio_data)
 
 
 def get_risk_profile_prompt(risk_profile_data: str) -> str:
-    """
-    Returns the prompt for risk profile summary.
-    
-    Args:
-        risk_profile_data: Risk profile data
-        
-    Returns:
-        Formatted prompt
-    """
-    return """## Prompt: Summarize the Client's Risk Profile
+    return """
+Write a single structured paragraph of 80–120 words summarizing the client's investor risk profile 
+strictly from the input provided.
 
-### Objective:
+Include:
+- Risk classification (e.g., conservative, moderate, aggressive)
+- Investment horizon
+- Tolerance for volatility and drawdowns
+- Primary investment objectives
+- Practical implications for how the client should be positioned
 
-Write a single, well-structured paragraph (80–120 words) summarizing the client’s investor profile 
-based strictly on the information provided in the input.
-
-### What to include:
-
-In a single paragraph, summarize the following:
-
-- Risk profile classification (e.g., conservative, moderate, aggressive)
-- Investment horizon (short/medium/long term)
-- Tolerance for volatility and losses
-- Main investment objectives (e.g., income, accumulation, retirement)
-
-### Style & Tone:
-
-- Formal and private-banking-oriented
-- Clear, concise, technical but client-friendly
+Style:
+- Private-banking tone: formal, concise, and polished
 - One paragraph only
+- Do not copy input sentences; paraphrase and synthesize
 
-### Important constraints
-- Do NOT add information not present in the input
-- Do NOT copy sentences verbatim; rephrase into a coherent summary
-- Do NOT contradict or reinterpret the client’s stated profile
+Hard constraints:
+- Do not add or infer data not present in the input
+- Do not contradict the stated profile
+- Do not expand beyond the information provided
 
----
-
-### Input:
-
-Below is the full client profile:
-
-{risk_profile}""".format(risk_profile=risk_profile_data)
+Input data:
+{risk_profile}
+""".format(risk_profile=risk_profile_data)
 
 
 def get_macro_outlook_prompt(macro_data: str) -> str:
-    """
-    Returns the prompt for macroeconomic outlook summary.
-    
-    Args:
-        macro_data: Macroeconomic analysis data
-        
-    Returns:
-        Formatted prompt
-    """
-    return """## Prompt: Summarize the Macroeconomic Outlook
+    return """
+Write a concise macroeconomic outlook of 120–160 words strictly based on the input provided.
 
-### Objective:
+Include:
+- Key macro trends mentioned (inflation, growth, interest rates, etc.)
+- Market sentiment and positioning, if included
+- Relevant risks noted by the source
+- A brief explanation of why these points matter for investment decisions
 
-You are preparing a macroeconomic commentary for a monthly investment report. 
-Write a clear and concise paragraph (120–160 words) summarizing the outlook strictly from the input provided.
+Style:
+- Analytical, clear, and professional
+- Avoid unnecessary jargon or speculation
+- Synthesize information rather than repeat it
 
-### What to include:
+Hard constraints:
+- Do not introduce new projections, numbers, or events not found in the input
+- Do not copy long phrases from the input
+- Do not contradict or reinterpret the original commentary
 
-- Key macroeconomic trends (inflation, interest rates, growth)
-- Market sentiment and investor positioning
-- Relevant analyst signals or risks
-- Points that matter for investment decisions
-
-### Style & Tone:
-
-- Formal, analytical, and investor-facing
-- Jargon acceptable, but avoid unnecessary complexity
-- One well-structured paragraph
-
-### Important constraints
-- Do NOT add projections, dates, numbers, or events that are not in the input
-- Do NOT repeat long phrases from the input; summarize and synthesize
-- Do NOT contradict the original commentary
-
----
-
-### Input:
-
-Below is the raw macroeconomic commentary for the month:
-
-{macroeconomic_report}""".format(macroeconomic_report=macro_data)
+Input data:
+{macroeconomic_report}
+""".format(macroeconomic_report=macro_data)
 
 
 def get_investment_letter_prompt(
@@ -141,62 +86,49 @@ def get_investment_letter_prompt(
     macro_outlook_summary: str,
     portfolio_results_summary: str
 ) -> str:
-    """
-    Returns the prompt for investment letter generation.
-    
-    Args:
-        risk_profile_summary: Risk profile summary
-        macro_outlook_summary: Macroeconomic outlook summary
-        portfolio_results_summary: Portfolio results summary
-        
-    Returns:
-        Formatted prompt
-    """
-    return """## Prompt: Write the Monthly Investment Letter (in Portuguese)
+    return """
+Write a polished, client-facing monthly investment letter in Portuguese with 400–500 words.
 
-### Objective:
+The letter must combine the three inputs (risk profile, macroeconomic outlook, portfolio performance) 
+into a cohesive narrative and include clear, actionable investment recommendations that are fully aligned 
+with the information provided.
 
-Combine the three summaries below (risk profile, macro outlook, and portfolio performance) 
-into a polished investment letter of up to 400–500 words, written entirely in Portuguese.
+Required content:
+- Professional greeting and brief context
+- Summary of the current portfolio allocation and recent performance
+- Connection between the macroeconomic environment and the portfolio's behavior
+- Practical recommendations that are justified by the content of the summaries
+- If the summaries mention available cash, risk capacity, or attractive opportunities, 
+  explicitly address whether deploying cash now makes sense and into which asset classes — 
+  but only if this is supported by the summaries
+- Close with a professional sign-off
 
-### What to include:
+Style:
+- Formal, polished, advisor-like tone
+- Smooth and natural transitions between topics
+- Provide recommendations that feel concrete and actionable (e.g., reinforcing exposure to 
+  a defensive asset class, increasing allocation to instruments aligned with inflation protection, 
+  maintaining a certain allocation considering the outlook)
+- All recommendations must be directly derived from content already present in the summaries
 
-- Brief greeting and context (“Prezado... segue o relatório do mês...”)
-- Portfolio results and allocation overview
-- Connection to the macroeconomic scenario and its implications
-- Recommendations aligned with the client’s risk profile
-- Closing paragraph with professional sign-off
+Hard constraints:
+- Do NOT introduce new numbers, projections, or asset classes not mentioned in the summaries
+- Do NOT invent macro trends, risk factors, or opportunities not supported by the summaries
+- Do NOT fabricate recommendations; they must be logically implied by the summaries
+- Do NOT copy the summaries verbatim; rewrite them into a fluid narrative in Portuguese
+- All output must remain consistent with the client's risk profile
 
-### Style & Tone:
+Inputs to integrate:
 
-- Formal, polished, and client-facing
-- Flowing transitions between sections (“Nesse contexto...”, “Diante desse cenário...”)
-- No repetition of the same idea across sections
-- Voice of an experienced advisor: confident, clear, objective
-
-### Important constraints
-- Do NOT add data or insights not present in the three summaries
-- Do NOT repeat the summaries verbatim; rephrase into a coherent narrative
-- Do NOT contradict the inputs
-- Keep the structure in paragraphs; do NOT use bullet points
-
----
-
-### Inputs:
-
-Below are the outputs from the previous steps:
-
-#### 1. Client Risk Profile:
-
+Risk Profile Summary:
 {risk_profile}
 
-#### 2. Macroeconomic Outlook:
-
+Macroeconomic Outlook Summary:
 {macro_outlook}
 
-#### 3. Portfolio Results:
-
-{portfolio_results}""".format(
+Portfolio Results Summary:
+{portfolio_results}
+""".format(
         risk_profile=risk_profile_summary,
         macro_outlook=macro_outlook_summary,
         portfolio_results=portfolio_results_summary
