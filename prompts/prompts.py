@@ -87,16 +87,17 @@ def get_investment_letter_prompt(
     portfolio_results_summary: str
 ) -> str:
     return """
-Write a polished, client-facing monthly investment letter in Portuguese with 400–500 words.
+Write a polished, client-facing monthly investment letter in Portuguese. Keep it between 400 and 500 words strictly
 
 The letter must combine the three inputs (risk profile, macroeconomic outlook, portfolio performance) 
 into a cohesive narrative and include clear, actionable investment recommendations that are fully aligned 
-with the information provided.
+with the information provided. The perspective of the letter is always the advisor speaking directly to the client.
+
 
 IMPORTANT: A portfolio allocation chart (donut chart) will be inserted in the document showing the 
 distribution across asset classes (stocks, funds, fixed income) and individual positions. When you 
 discuss the portfolio allocation, naturally reference this chart. For example: "Como podemos observar 
-no gráfico de distribuição abaixo" or "Conforme ilustrado na visualização da alocação" or similar 
+no gráfico de distribuição do portfólio" or "Conforme ilustrado na visualização da alocação" or similar 
 natural transitions. The chart will be placed near the paragraph where you discuss portfolio composition.
 
 Required content:
@@ -108,6 +109,12 @@ Required content:
   explicitly address whether deploying cash now makes sense and into which asset classes — 
   but only if this is supported by the summaries
 - Professional closing (DO NOT include sign-off like "Atenciosamente" or signature - this will be added automatically)
+
+Integration requirements (EXTREMELY IMPORTANT):
+- The letter must build a continuous and coherent narrative connecting:
+  (1) the macroeconomic environment,
+  (2) the portfolio’s recent behavior, and
+  (3) the investment recommendation
 
 Style:
 - Formal, polished, advisor-like tone
@@ -123,11 +130,10 @@ Hard constraints:
 - Do NOT include a sign-off or closing salutation (e.g., "Atenciosamente", "Cordialmente") - this will be added automatically
 - Do NOT introduce new numbers, projections, or asset classes not mentioned in the summaries
 - Do NOT invent macro trends, risk factors, or opportunities not supported by the summaries
-- Do NOT fabricate recommendations; they must be logically implied by the summaries
 - Do NOT copy the summaries verbatim; rewrite them into a fluid narrative in Portuguese
 - All output must remain consistent with the client's risk profile
 - When discussing portfolio composition/allocation, naturally reference the chart (e.g., "como mostra o gráfico", "conforme ilustrado", etc.)
-- Use **text** format for bold text (e.g., **Ações:**, **Fundos:**) - this will be automatically converted to bold formatting
+- Use **text** format for bold text
 
 Inputs to integrate:
 
