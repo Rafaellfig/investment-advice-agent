@@ -9,8 +9,14 @@ from docx.oxml.ns import qn
 from datetime import datetime
 import locale
 import io
-import os
 import re
+from config.settings import (
+    FINAL_PARAGRAPH_TEXT,
+    DEFAULT_TOP_MARGIN,
+    DEFAULT_BOTTOM_MARGIN,
+    DEFAULT_LEFT_MARGIN,
+    DEFAULT_RIGHT_MARGIN,
+)
 locale.setlocale(locale.LC_TIME, "pt_BR.UTF-8")
 
 
@@ -104,10 +110,10 @@ def create_letter(
     signature_name,
     signature_title,
     chart_figure=None,
-    top_mm=25,
-    bottom_mm=25,
-    left_mm=22,
-    right_mm=22
+    top_mm=None,
+    bottom_mm=None,
+    left_mm=None,
+    right_mm=None
 ):
     """
     Creates a formatted letter in a Word document using python-docx.
@@ -125,8 +131,18 @@ def create_letter(
         signature_name (str): Name to appear in the signature.
         signature_title (str): Title below signature.
         chart_figure (matplotlib.figure.Figure, optional): Matplotlib figure to insert in the document.
-        top_mm, bottom_mm, left_mm, right_mm (int): Margin sizes.
+        top_mm, bottom_mm, left_mm, right_mm (int, optional): Margin sizes. Uses defaults from config if None.
     """
+    # Use default margins from config if not provided
+    if top_mm is None:
+        top_mm = DEFAULT_TOP_MARGIN
+    if bottom_mm is None:
+        bottom_mm = DEFAULT_BOTTOM_MARGIN
+    if left_mm is None:
+        left_mm = DEFAULT_LEFT_MARGIN
+    if right_mm is None:
+        right_mm = DEFAULT_RIGHT_MARGIN
+    
     doc = Document()
 
     # Default document font (ensures accent compatibility)
@@ -139,7 +155,13 @@ def create_letter(
 
     # --- Margins ---
     section = doc.sections[0]
-    set_document_margins(section, top_mm=25, bottom_mm=25, left_mm=22, right_mm=22)
+    set_document_margins(
+        section,
+        top_mm=top_mm,
+        bottom_mm=bottom_mm,
+        left_mm=left_mm,
+        right_mm=right_mm
+    )
 
     # --- Header with image (left) and sender info (right) ---
     table = doc.add_table(rows=1, cols=2)
@@ -175,19 +197,18 @@ def create_letter(
     data_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
     data_paragraph.add_run(f"{city}, {datetime.now().strftime('%d de %B de %Y')}")
 
-    # --- Recipient ---
-    dest = doc.add_paragraph()
-    dest.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
-    dest.add_run(recipient_name).bold = True
-
-    doc.add_paragraph()
-
     # --- Subject ---
     subj = doc.add_paragraph()
     subj.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
     run = subj.add_run(subject_text)
     run.bold = True
     run.font.size = Pt(11)
+    doc.add_paragraph()
+
+    # --- Recipient ---
+    dest = doc.add_paragraph()
+    dest.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+    dest.add_run(recipient_name).bold = True
 
     # --- Letter body ---
     chart_inserted = False
@@ -248,8 +269,7 @@ def create_letter(
     # --- Final paragraph before closing ---
     final_para = doc.add_paragraph()
     final_para.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
-    final_text = "Estamos à disposição para discutir mais detalhadamente os resultados e as recomendações, bem como para esclarecer quaisquer dúvidas que você possa ter. Agradecemos pela confiança depositada em nossos serviços e seguimos comprometidos em ajudá-lo a alcançar seus objetivos financeiros."
-    add_paragraph_with_bold(final_para, final_text)
+    add_paragraph_with_bold(final_para, FINAL_PARAGRAPH_TEXT)
     
     final_para_format = final_para.paragraph_format
     final_para_format.space_after = Pt(8)

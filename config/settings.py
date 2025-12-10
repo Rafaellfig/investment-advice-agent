@@ -24,5 +24,28 @@ PORTFOLIO_FILE = INPUT_DIR / "XP - Albert_s portfolio.txt"
 RISK_PROFILE_FILE = INPUT_DIR / "XP - Albert_s risk profile.txt"
 MACRO_ANALYSIS_FILE = INPUT_DIR / "XP - Macro analysis.txt"
 
-# Output file path
+# Output file paths
 OUTPUT_FILE = OUTPUT_DIR / "output_letter.txt"
+OUTPUT_DOCX_FILE = OUTPUT_DIR / "Relatorio_Investimento_Mensal.docx"
+
+# Document configuration
+LOGO_FILE = INPUT_DIR / "xp-investimentos_logo.png"
+DEFAULT_CITY = "São Paulo"
+DEFAULT_SUBJECT = "Relatório Mensal de Investimentos"
+DEFAULT_CLOSING_LINE = "Atenciosamente,"
+DEFAULT_ADVISOR_TITLE = "Assessor de Investimentos"
+DEFAULT_GREETING_PREFIX = "Prezado(a)"
+FINAL_PARAGRAPH_TEXT = (
+    "Estamos à disposição para discutir mais detalhadamente os resultados e as recomendações, "
+    "bem como para esclarecer quaisquer dúvidas que você possa ter. Agradecemos pela confiança "
+    "depositada em nossos serviços e seguimos comprometidos em ajudá-lo a alcançar seus objetivos financeiros."
+)
+
+# Document margins (in millimeters)
+DEFAULT_TOP_MARGIN = 25
+DEFAULT_BOTTOM_MARGIN = 25
+DEFAULT_LEFT_MARGIN = 22
+DEFAULT_RIGHT_MARGIN = 22
+
+# Preview settings
+PREVIEW_LENGTH = 500
