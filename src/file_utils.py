@@ -261,10 +261,6 @@ def create_letter(
         chart_para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
         run = chart_para.add_run()
         run.add_picture(chart_buffer, width=Inches(3.5))
-        
-        doc.add_paragraph()  # Add spacing after chart
-
-    doc.add_paragraph() 
 
     # --- Final paragraph before closing ---
     final_para = doc.add_paragraph()
