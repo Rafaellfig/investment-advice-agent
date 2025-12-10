@@ -245,6 +245,18 @@ def create_letter(
 
     doc.add_paragraph() 
 
+    # --- Final paragraph before closing ---
+    final_para = doc.add_paragraph()
+    final_para.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+    final_text = "Estamos à disposição para discutir mais detalhadamente os resultados e as recomendações, bem como para esclarecer quaisquer dúvidas que você possa ter. Agradecemos pela confiança depositada em nossos serviços e seguimos comprometidos em ajudá-lo a alcançar seus objetivos financeiros."
+    add_paragraph_with_bold(final_para, final_text)
+    
+    final_para_format = final_para.paragraph_format
+    final_para_format.space_after = Pt(8)
+    final_para_format.line_spacing = 1.15
+
+    doc.add_paragraph()
+
     # --- Closing line and signature ---
     closing = doc.add_paragraph()
     closing.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
