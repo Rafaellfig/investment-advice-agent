@@ -223,29 +223,24 @@ def create_letter(
         p_format.space_after = Pt(8)
         p_format.line_spacing = 1.15
         
-        # Insert chart after the first or second paragraph (where allocation is mentioned)
-        # Look for keywords that suggest portfolio allocation discussion
-        if not chart_inserted and chart_figure is not None:
-            # Check if this paragraph mentions allocation, distribution, or portfolio composition
-            lower_para = para.lower()
-            allocation_keywords = ['alocação', 'distribuição', 'composto por', 'portfólio', 'ações', 'fundos', 'renda fixa']
-            if any(keyword in lower_para for keyword in allocation_keywords) and i >= 0:
-                # Insert chart after this paragraph
-                doc.add_paragraph()  # Add spacing
-                
-                # Save chart to temporary buffer
-                chart_buffer = io.BytesIO()
-                chart_figure.savefig(chart_buffer, format='png', dpi=150, bbox_inches='tight')
-                chart_buffer.seek(0)
-                
-                # Insert chart centered
-                chart_para = doc.add_paragraph()
-                chart_para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-                run = chart_para.add_run()
-                run.add_picture(chart_buffer, width=Inches(3.5))
-                
-                doc.add_paragraph()  # Add spacing after chart
-                chart_inserted = True
+        # Insert chart after the first body paragraph, if provided
+        if not chart_inserted and chart_figure is not None and i == 0:
+            # Insert chart after the first body paragraph
+            doc.add_paragraph()  # Add spacing
+
+            # Save chart to temporary buffer
+            chart_buffer = io.BytesIO()
+            chart_figure.savefig(chart_buffer, format='png', dpi=150, bbox_inches='tight')
+            chart_buffer.seek(0)
+            
+            # Insert chart centered
+            chart_para = doc.add_paragraph()
+            chart_para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            run = chart_para.add_run()
+            run.add_picture(chart_buffer, width=Inches(3.5))
+            
+            doc.add_paragraph()  # Add spacing after chart
+            chart_inserted = True
 
     # If chart wasn't inserted yet, insert it after all paragraphs
     if not chart_inserted and chart_figure is not None:

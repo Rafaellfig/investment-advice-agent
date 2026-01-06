@@ -120,9 +120,7 @@ Style:
 - Formal, polished, advisor-like tone
 - Smooth and natural transitions between topics
 - When discussing portfolio allocation, naturally reference the chart that will appear in the document
-- Provide recommendations that feel concrete and actionable (e.g., reinforcing exposure to 
-  a defensive asset class, increasing allocation to instruments aligned with inflation protection, 
-  maintaining a certain allocation considering the outlook)
+- Provide recommendations that feel concrete and actionable
 - All recommendations must be directly derived from content already present in the summaries
 
 Hard constraints:
