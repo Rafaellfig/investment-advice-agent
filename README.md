@@ -1,4 +1,4 @@
-# Investment Letter Generation Workflow
+# investment Advice Agent
 
 This product is an automated investment letter generation system powered by Large Language Models (LLMs).  
 It transforms structured financial inputs—such as client portfolio data, risk profiles, and macroeconomic analyses—into coherent, professional investment letters suitable for client-facing communication.
