@@ -31,6 +31,7 @@ investment-advice-agent/
 ├── src/
 │ ├── init.py
 │ ├── file_utils.py # File I/O utilities
+│ ├── portfolio_parser.py # Reading and interpretation of the client’s portfolio.
 │ └── ai_service.py # OpenAI integration layer
 ├── prompts/
 │ ├── init.py
@@ -40,6 +41,7 @@ investment-advice-agent/
 │ ├── XP - Albert_s risk profile.txt
 │ └── XP - Macro analysis.txt
 ├── Output/
+│ ├── output_letter.docx
 │ └── output_letter.txt
 ├── requirements.txt
 ├── .env # Environment variables (ignored)
@@ -95,7 +97,7 @@ Output/output_letter.docx
 
 Below is an excerpt of a generated investment letter:
 
-image.png
+![Sample investment letter output](Input/print_example_letter.png)
 
 *The screenshot above shows a real execution of the workflow using sample inputs.*
 
@@ -131,7 +133,7 @@ Prompt templates organized into functions:
 - `get_macro_outlook_prompt()`: Macroeconomic analysis prompt
 - `get_investment_letter_prompt()`: Final investment letter prompt
 
-🧠 Design Decisions
+## 🧠 Design Decisions
 
 - **Separation of concerns:** Orchestration, I/O, prompt engineering, and AI logic are isolated.
 - **Prompt centralization:** Prompts are treated as first-class artifacts.
@@ -152,7 +154,7 @@ Editable in `config/settings.py`:
 - No credentials are hardcoded
 - Designed to be safely shared as a public repository
 
-🎯 Why This Project Matters
+## 🎯 Why This Project Matters
 
 This project demonstrates:
 - Practical application of LLMs in a real financial communication workflow
@@ -160,7 +162,7 @@ This project demonstrates:
 - Clean, maintainable Python architecture
 - Production-oriented thinking (security, configurability, scalability)
 
-🚧 Possible Extensions
+## 🚧 Possible Extensions
 
 - Add unit tests for AI and file services
 - Support multiple output languages
@@ -168,7 +170,7 @@ This project demonstrates:
 - Expose the workflow via API or web interface
 - Add structured output validation (schemas)
 
-📝 Requirements
+## 📝 Requirements
 
 - Python 3.7+
 - OpenAI API key
