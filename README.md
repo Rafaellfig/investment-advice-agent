@@ -75,7 +75,7 @@ The generated investment letter will be saved to:
 Output/output_letter.docx
 ```
 
-## 📋 Workflow Description
+## Workflow Description
 
 1. **Input ingestion:**
    - Client portfolio
@@ -93,7 +93,7 @@ Output/output_letter.docx
 4. **Output persistence:**
    - Final letter is written to disk
 
-📄 Example Output
+Example Output
 
 Below is an excerpt of a generated investment letter:
 
