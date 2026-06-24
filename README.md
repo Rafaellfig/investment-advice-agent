@@ -10,7 +10,7 @@ From an engineering perspective, the product emphasizes modularity, prompt versi
 This solution is applicable to wealth management teams, investment advisors, and financial institutions seeking to scale personalized client communication while maintaining quality, tone, and alignment with investment strategy.
 
 
-## 📌 Overview
+## Overview
 
 The workflow ingests structured financial inputs (portfolio data, risk profile, and macroeconomic analysis), generates intermediate AI summaries, and produces a final investment letter in Portuguese suitable for client communication.
 
@@ -20,7 +20,7 @@ The project emphasizes:
 - Reproducibility
 - Production-ready design principles
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 investment-advice-agent/
@@ -48,7 +48,7 @@ investment-advice-agent/
 └── .gitignore
 ```
 
-## 🚀 How to Run
+## How to Run
 
 ### 1. Install dependencies
 ```bash
@@ -101,7 +101,7 @@ Below is an excerpt of a generated investment letter:
 
 *The screenshot above shows a real execution of the workflow using sample inputs.*
 
-## 🏗️ Architecture
+## Architecture
 
 ### `main.py`
 Responsible exclusively for workflow orchestration.
@@ -133,14 +133,14 @@ Prompt templates organized into functions:
 - `get_macro_outlook_prompt()`: Macroeconomic analysis prompt
 - `get_investment_letter_prompt()`: Final investment letter prompt
 
-## 🧠 Design Decisions
+## Design Decisions
 
 - **Separation of concerns:** Orchestration, I/O, prompt engineering, and AI logic are isolated.
 - **Prompt centralization:** Prompts are treated as first-class artifacts.
 - **Configuration isolation:** Model and generation parameters can be changed without touching business logic.
 - **Extensibility**: New steps or models can be added with minimal refactoring.
 
-## ⚙️ Configuration
+## Configuration
 
 Editable in `config/settings.py`:
 
@@ -148,13 +148,13 @@ Editable in `config/settings.py`:
 - **Temperature:** `0.5`
 - **Max Tokens:** `1024`
 
-## 🔒 Security Considerations
+## Security Considerations
 
 - API keys are stored in .env and excluded from version control
 - No credentials are hardcoded
 - Designed to be safely shared as a public repository
 
-## 🎯 Why This Project Matters
+## Why This Project Matters
 
 This project demonstrates:
 - Practical application of LLMs in a real financial communication workflow
@@ -162,7 +162,7 @@ This project demonstrates:
 - Clean, maintainable Python architecture
 - Production-oriented thinking (security, configurability, scalability)
 
-## 🚧 Possible Extensions
+## Possible Extensions
 
 - Add unit tests for AI and file services
 - Support multiple output languages
@@ -170,13 +170,13 @@ This project demonstrates:
 - Expose the workflow via API or web interface
 - Add structured output validation (schemas)
 
-## 📝 Requirements
+## Requirements
 
 - Python 3.7+
 - OpenAI API key
 - Input files located in the `Input/` directory
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Error: "API key not found"
 - Check if the `.env` file exists at the project root
